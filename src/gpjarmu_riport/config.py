@@ -67,6 +67,18 @@ class Settings(BaseSettings):
     scraper_user_agent: str = Field(
         default="Mozilla/5.0 (Windows NT 10.0; Win64; x64) GpjarmuRiport/1.0"
     )
+    # --- Performance: classify node ---
+    classify_concurrency: int = Field(
+        default=5, ge=1, le=32,
+        description="Max parallel LLM calls in the classify node.",
+    )
+    keyword_filter_enabled: bool = Field(
+        default=True,
+        description=(
+            "If true, skip bekezdések that contain no vehicle-related keyword "
+            "before calling the LLM. Cuts 80-95% of API calls."
+        ),
+    )
 
     # ---- State ----
     state_db_path: Path = Field(default=Path("./data/state.db"))
