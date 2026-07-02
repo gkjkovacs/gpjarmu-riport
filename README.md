@@ -1,6 +1,6 @@
 # Céges Gépjármű Magyar Közlöny Havi Riport
 
-> Havi automatikus monitor, amely a **Magyar Közlöny** friss számait átfésüli, és kiszűri a **céges gépjárműveket** érintő jogszabályváltozásokat — egyetlen `.eml` fájlba rendezve.
+> Havi automatikus monitor, amely a **Magyar Közlöny** friss számait átfésüli, és kiszűri a **céges gépjárműveket** érintő jogszabályváltozásokat — egyetlen `.txt` riportfájlba rendezve.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![LangGraph](https://img.shields.io/badge/orchestration-LangGraph-orange)](https://langchain-ai.github.io/langgraph/)
@@ -10,7 +10,7 @@
 
 ## Mi ez?
 
-A `magyarkozlony.hu` oldalról gyűjti az elmúlt **30 nap** Magyar Közlöny számait, minden számból kiemeli a bekezdés-szintű egységeket, majd egy LLM-mel **szemantikusan** eldönti, hogy melyek érintik a céges gépjárművek adózását, üzemeltetését, biztosítását, flottakezelését stb. Az újdonságokról egyetlen `.eml` fájl készül, amit megnyithatsz bármely levelezőkliensben (Thunderbird, Outlook, Apple Mail, mutt).
+A `magyarkozlony.hu` oldalról gyűjti az elmúlt **30 nap** Magyar Közlöny számait, minden számból kiemeli a bekezdés-szintű egységeket, majd egy LLM-mel **szemantikusan** eldönti, hogy melyek érintik a céges gépjárművek adózását, üzemeltetését, biztosítását, flottakezelését stb. Az újdonságokról egyetlen `.txt` riport készül, amit megnyithatsz bármely szövegszerkesztőben (Notepad, VS Code, Notepad++). A Windows Task Scheduler csatolhatja e-mailhez, de a pipeline maga nem küld levelet.
 
 **Főbb jellemzők:**
 
@@ -19,7 +19,7 @@ A `magyarkozlony.hu` oldalról gyűjti az elmúlt **30 nap** Magyar Közlöny sz
 - **30 napos rolling ablak** — az első futás egy 30 napos seed, utána mindig az előző futás óta újat dolgozza fel.
 - **Szemantikus relevancia** — az LLM 0,00–1,00 score-t ad minden bekezdésre, és a téma-taxonomia alapján 15 altémakörbe sorolja. A küszöb (alapból 0,50) egyszerűen átállítható.
 - **Magyar nyelvű kimenet** — subject, törzs, action item-ek mind magyarul.
-- **SMTP opcionális** — alapértelmezetten `.eml` fájlba ment, de a `.env`-ben `SMTP_ENABLED=true`-val azonnal küldi is.
+- **Nincs e-mail küldés** — egyszerű UTF-8 `.txt` fájlba ír; a Windows Task Scheduler küldi tovább e-mailben, ha kell.
 - **Platform-független** — Windows / macOS / Linux. A Windows Task Scheduler-be (vagy a Linux cron-ba) egyetlen parancsot kell ütemezni.
 
 ---
@@ -74,16 +74,16 @@ A `.env`-ben két dolgot kell kitöltened:
 python run.py seed
 ```
 
-Ez feldolgozza az elmúlt 30 napot, és a kimenet az `output/gpjarmu-<dátum>.eml` fájlba kerül.
+Ez feldolgozza az elmúlt 30 napot, és a kimenet az `output/gpjarmu-<dátum>.txt` fájlba kerül.
 
 ### 7. Megnézés
 
 ```powershell
 # Megnyitás az alapértelmezett levelezőkliensben
-start output\gpjarmu-2026-07-02.eml
+start output\gpjarmu-2026-07-02.txt
 
 # Vagy PowerShell-ben szövegesen
-Get-Content output\gpjarmu-2026-07-02.eml
+Get-Content output\gpjarmu-2026-07-02.txt
 ```
 
 ### 8. Havi ütemezés (Windows Task Scheduler)
@@ -119,7 +119,7 @@ gpjarmu-riport/
 ├── run.py                      # CLI entrypoint: `python run.py run|seed|init-db|show-config`
 ├── README.md
 ├── data/                       # SQLite state.db (git-ignored)
-├── output/                     # Generált .eml fájlok (git-ignored)
+├── output/                     # Generált .txt riportok (git-ignored)
 ├── src/
 │   └── gpjarmu_riport/
 │       ├── __init__.py
@@ -180,7 +180,7 @@ Minden node:
 3. **`classify`** — az LLM minden bekezdésre pontoz (0,00–1,00) és 15 altémakör egyikébe sorolja. Csak a `>= RELEVANCE_THRESHOLD` (alapból 0,50) score-júak maradnak.
 4. **`dedupe`** — a state DB-ben ellenőrzi, hogy az `(issue_number, anchor)` már riportolva volt-e.
 5. **`expand`** — a fennmaradt bekezdésekből az LLM 2-4 mondatos bővítést, kulcs-dátumokat és action item-eket generál.
-6. **`render_email`** — Jinja2 template + email.message.EmailMessage → `.eml` fájl. Opcionálisan SMTP-n is elküldi.
+6. **`render_email`** — strukturált adatokból plain text riportot épít, és kiírja `gpjarmu-<dátum>.txt` néven.
 
 ---
 
@@ -198,8 +198,8 @@ Minden konfigurációs érték a `.env` fájlban van, Pydantic-kal validálva. A
 | `LOOKBACK_DAYS` | `30` | Hány napra visszamenőleg dolgozzon |
 | `RELEVANCE_THRESHOLD` | `0.50` | Relevancia küszöb (0–1) |
 | `STATE_DB_PATH` | `./data/state.db` | SQLite state DB helye |
-| `OUTPUT_DIR` | `./output` | .eml fájlok célmappája |
-| `SMTP_ENABLED` | `false` | Ha `true`, a `.eml` mellett SMTP-n is küld |
+| `OUTPUT_DIR` | `./output` | .txt riportok célmappája |
+| `SMTP_ENABLED` | `false` | Már nem használt — a `.txt` riportot a Windows Task Scheduler küldi tovább |
 
 ---
 

@@ -1,8 +1,14 @@
 """
 Graph node: render_email
 
-Assembles the final .eml file and (optionally) sends it via SMTP.
-Also persists the new items to the state DB so they don't get reported again.
+Assembles the final .txt report and persists the new items to the state DB
+so they don't get reported again.
+
+History: this used to produce a multipart/alternative .eml file and
+(optionally) send it via SMTP. We now produce a simple UTF-8 .txt file —
+the user reads it directly, or the Windows Task Scheduler can attach it
+to an email later. The SMTP transport is kept in the email package for
+future re-enablement but is no longer called from the pipeline.
 """
 
 from __future__ import annotations
@@ -13,21 +19,21 @@ from datetime import date
 from pathlib import Path
 
 from ...config import Settings
-from ...email import render_and_save, send_eml_file
+from ...email import render_and_save_report
 from ...state.db import ReportedItem, StateDB
 
 logger = logging.getLogger(__name__)
 
 
 def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
-    """Build the .eml, save it, optionally send via SMTP, persist state."""
+    """Build the .txt report, save it, and persist state."""
     run_date = state["run_date"]
     lookback_start = state["lookback_start"]
     lookback_end = state["lookback_end"]
     expanded_items: list[dict] = state.get("expanded_items", [])
     new_items_count = len(expanded_items)
 
-    # Group by issue for the email body
+    # Group by issue for the report body
     grouped: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for item in expanded_items:
         key = (item["issue_number"], item["issue_date"])
@@ -48,11 +54,10 @@ def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
         for (number, date_), items in sorted_issues
     ]
 
-    eml_path: Path | None = None
-    eml_sent = False
+    report_path: Path | None = None
 
     if not settings.dry_run:
-        eml_path = render_and_save(
+        report_path = render_and_save_report(
             output_dir=settings.output_dir,
             run_date=run_date,
             lookback_start=lookback_start,
@@ -62,20 +67,8 @@ def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
             grouped_issues=grouped_issues,
             settings=settings,
         )
-        if settings.smtp_enabled:
-            try:
-                send_eml_file(eml_path, settings)
-                eml_sent = True
-            except Exception as e:
-                logger.exception("SMTP send failed")
-                return {
-                    "eml_path": str(eml_path),
-                    "eml_sent": False,
-                    "new_items_count": new_items_count,
-                    "errors": [f"SMTP send failed: {e}"],
-                }
     else:
-        logger.info("DRY_RUN=true — skipping .eml write and SMTP")
+        logger.info("DRY_RUN=true — skipping .txt report write")
 
     # Persist state
     persisted = 0
@@ -133,15 +126,14 @@ def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
         db.bump_total_reported(persisted)
 
     logger.info(
-        "Run complete. New items: %d / persisted: %d / .eml: %s / sent: %s",
+        "Run complete. New items: %d / persisted: %d / report: %s",
         new_items_count, persisted,
-        str(eml_path) if eml_path else "(dry run)",
-        eml_sent,
+        str(report_path) if report_path else "(dry run)",
     )
 
     return {
-        "eml_path": str(eml_path) if eml_path else "",
-        "eml_sent": eml_sent,
+        "report_path": str(report_path) if report_path else "",
+        "eml_sent": False,  # SMTP path no longer wired up
         "new_items_count": new_items_count,
     }
 

@@ -62,16 +62,14 @@ def _run_pipeline_and_report(seed: bool) -> None:
         result = asyncio.run(run_pipeline(settings, db, seed=seed))
 
     new_count = result.get("new_items_count", 0)
-    eml_path = result.get("eml_path", "")
-    eml_sent = result.get("eml_sent", False)
+    report_path = result.get("report_path", "")
     errors = result.get("errors", [])
     warnings = result.get("warnings", [])
 
     panel = Panel(
         f"[bold green]✓ Run complete[/bold green]\n\n"
         f"New items: [bold]{new_count}[/bold]\n"
-        f".eml file: {eml_path or '(none — dry run or empty)'}\n"
-        f"SMTP sent: {'yes' if eml_sent else 'no'}\n"
+        f"Report file: {report_path or '(none — dry run or empty)'}\n"
         f"Issues scanned: {result.get('issues_scanned', 0)}\n"
         f"Warnings: {len(warnings)}\n"
         f"Errors: {len(errors)}",

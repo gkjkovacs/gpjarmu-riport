@@ -7,7 +7,7 @@ The state flows through 6 nodes:
   3. classify          — LLM relevance classification
   4. dedupe            — drop items already reported (state DB)
   5. expand            — LLM summary expansion
-  6. render_email      — produce the .eml file (and optionally send via SMTP)
+  6. render_email      — produce the .txt report
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from langchain_core.messages import BaseMessage
 
 
 class BekezdesItem(TypedDict):
-    """A classified (and possibly expanded) bekezdés ready for the email body."""
+    """A classified (and possibly expanded) bekezdés ready for the report body."""
 
     issue_number: str
     issue_date: str
@@ -58,11 +58,11 @@ class GraphState(TypedDict, total=False):
     new_items: list[dict[str, Any]]     # not yet reported (will be persisted)
 
     # --- Expand node output ---
-    expanded_items: list[BekezdesItem]  # ready for the email
+    expanded_items: list[BekezdesItem]  # ready for the report
 
     # --- Render node output ---
-    eml_path: str                       # path to the saved .eml
-    eml_sent: bool                      # True if SMTP send succeeded
+    report_path: str                    # path to the saved .txt report
+    eml_sent: bool                      # always False now (SMTP no longer wired up)
     new_items_count: int                # convenience counter
 
     # --- Diagnostics ---

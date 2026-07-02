@@ -28,8 +28,9 @@ pdfplumber>=0.11,<1.0
 jinja2>=3.1,<4.0
 
 # --- Email ---
-# python-dotenv is already in core. No extra deps for .eml (stdlib email.message).
-# For SMTP, smtplib is in the stdlib.
+# No extra deps for the .txt report (plain UTF-8 string).
+# The legacy .eml / SMTP transport is in src/gpjarmu_riport/email/smtp.py,
+# kept for future re-enablement but not wired into the main render path.
 
 # --- CLI / output ---
 rich>=13.7,<14.0
