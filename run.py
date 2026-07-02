@@ -44,13 +44,8 @@ def _setup_logging() -> Settings:
     return settings
 
 
-@app.command()
-def run(
-    seed: bool = typer.Option(
-        False, "--seed", help="Seed run: ignore last_run, process full 30-day window."
-    ),
-):
-    """Run the monthly Magyar Közlöny monitor pipeline."""
+def _run_pipeline_and_report(seed: bool) -> None:
+    """Shared implementation for the `run` and `seed` commands."""
     settings = _setup_logging()
     try:
         settings.validate_for_run()
@@ -61,7 +56,9 @@ def run(
     db = StateDB(settings.state_db_path)
     from gpjarmu_riport.graph import run_pipeline
 
-    with console.status("[bold green]Running pipeline…[/bold green]"):
+    label = "[bold green]Running seed pipeline (full 30-day window)…[/bold green]" if seed \
+        else "[bold green]Running pipeline…[/bold green]"
+    with console.status(label):
         result = asyncio.run(run_pipeline(settings, db, seed=seed))
 
     new_count = result.get("new_items_count", 0)
@@ -85,6 +82,28 @@ def run(
         console.print("[red]Errors:[/red]")
         for e in errors:
             console.print(f"  • {e}")
+
+
+@app.command()
+def run(
+    seed: bool = typer.Option(
+        False, "--seed", help="Seed run: ignore last_run, process full 30-day window."
+    ),
+):
+    """Run the monthly Magyar Közlöny monitor pipeline."""
+    _run_pipeline_and_report(seed=seed)
+
+
+@app.command()
+def seed():
+    """
+    Initial 30-day seed run.
+
+    Same as `run --seed`. Processes the full 30-day lookback window
+    regardless of the last_run stored in the state DB. Use this on
+    the first run, or after `init-db --force`, to re-seed.
+    """
+    _run_pipeline_and_report(seed=True)
 
 
 @app.command(name="init-db")
