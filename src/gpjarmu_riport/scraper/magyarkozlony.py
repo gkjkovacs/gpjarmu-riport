@@ -166,27 +166,47 @@ class MagyarKozlonyClient:
 
     def _parse_issue_list(self, html: str) -> list[IssueMeta]:
         """
-        Parse the homepage issue table.
+        Parse the homepage issue list.
 
-        Expected structure (best-effort):
-          <tr>
-            <td><a href="/dokumentumok/{hash}/megtekintes">2026. évi 83. szám</a></td>
-            <td>2026. július 1.</td>
-            <td>Indokolás</td>
-          </tr>
+        The site uses a Bootstrap grid (NOT a <table>): each issue is wrapped
+        in `<div class="fresh-row">` containing a row with:
+          - <meta itemprop="datePublished" content="YYYY-MM-DD">  (ISO date)
+          - <a href="/dokumentumok/{hash}/megtekintes"><b itemprop="name">Magyar Közlöny 2026. évi 83. szám</b></a>
+          - <a class="... pull-right" href=".../letoltes" title="">  (PDF link)
+          - <a href=".../indoklasok" style="margin-left: 10px;"> »Indokolások</a>  (if present)
+
+        Some pages render fresh-row, others render a wider list — we walk up
+        to the nearest containing <div> that has the datePublished meta and
+        extract all fields from there.
         """
         soup = BeautifulSoup(html, "lxml")
         results: list[IssueMeta] = []
-        for row in soup.find_all("tr"):
-            link = row.find("a", href=re.compile(r"/dokumentumok/.+/megtekintes"))
-            if not link:
-                continue
-            number_raw = link.get_text(strip=True)
+        seen_keys: set[str] = set()
 
-            # Drop Hivatalos Értesítő rows early — they appear in the same table
-            cells = row.find_all("td")
-            if any("Hivatalos Értesítő" in c.get_text() for c in cells):
-                continue
+        for link in soup.find_all(
+            "a", href=re.compile(r"/dokumentumok/[^/]+/megtekintes")
+        ):
+            href = link.get("href", "")
+            # Normalize: drop /hivatalos-lapok/{...}/ prefix if present
+            href = re.sub(r"^/hivatalos-lapok/[^/]+/", "/", href)
+            # If already an absolute URL, use as-is. Otherwise prepend "/" or use base+href.
+            if href.startswith("http://") or href.startswith("https://"):
+                megtekintes_url = href
+            else:
+                if not href.startswith("/"):
+                    href = "/" + href
+                megtekintes_url = urljoin(self.base_url, href)
+
+            # Issue number is the <b itemprop="name"> text inside the link,
+            # or the link's own text if there's no <b>
+            number_raw = link.get_text(" ", strip=True)
+            if not number_raw:
+                # Try the <b> child
+                b = link.find("b")
+                if b:
+                    number_raw = b.get_text(strip=True)
+
+            # Drop Hivatalos Értesítő entries
             if "Hivatalos Értesítő" in number_raw:
                 continue
 
@@ -195,26 +215,64 @@ class MagyarKozlonyClient:
                 continue
             year, seq = num_match.group(1), num_match.group(2)
             issue_id = f"{year}/{seq}"
-
-            # Date is in the next <td>
-            if len(cells) < 2:
+            if issue_id in seen_keys:
                 continue
-            iso_date = _parse_hu_date(cells[1].get_text(" ", strip=True))
+            seen_keys.add(issue_id)
+
+            # Walk up to find the datePublished meta and the indokolás link
+            container = link
+            for _ in range(6):
+                container = container.parent
+                if container is None:
+                    break
+                date_meta = container.find("meta", attrs={"itemprop": "datePublished"})
+                if date_meta and date_meta.get("content"):
+                    iso_date = date_meta["content"]
+                    break
+            else:
+                iso_date = None
+
+            if not iso_date:
+                # Fallback: try the Hungarian date text in the row
+                container = link
+                for _ in range(6):
+                    container = container.parent
+                    if container is None:
+                        break
+                    text = container.get_text(" ", strip=True)
+                    parsed = _parse_hu_date(text)
+                    if parsed:
+                        iso_date = parsed
+                        break
             if not iso_date:
                 continue
 
-            megtekintes_url = urljoin(self.base_url, link["href"])
+            # indokolás link: <a href="...indoklasok"> »Indokolások</a>
+            has_indokolas = False
+            container = link
+            for _ in range(6):
+                container = container.parent
+                if container is None:
+                    break
+                for a in container.find_all("a", href=True):
+                    if "indokl" in a["href"].lower() or "indokl" in a.get_text().lower():
+                        has_indokolas = True
+                        break
+                if has_indokolas:
+                    break
+
+            megtekintes_url = megtekintes_url
             letoltes_url = megtekintes_url.replace("/megtekintes", "/letoltes")
-            has_ind = len(cells) >= 3 and cells[2].get_text(strip=True)
             indokolas_url = (
-                megtekintes_url.replace("/megtekintes", "/indokolas") if has_ind else None
+                megtekintes_url.replace("/megtekintes", "/indokolas")
+                if has_indokolas else None
             )
 
             results.append(IssueMeta(
                 number=number_raw,
                 issue_id=issue_id,
                 date=iso_date,
-                has_indokolas=bool(has_ind),
+                has_indokolas=has_indokolas,
                 megtekintes_url=megtekintes_url,
                 letoltes_url=letoltes_url,
                 indokolas_url=indokolas_url,
@@ -227,13 +285,40 @@ class MagyarKozlonyClient:
         """
         Fetch the per-issue 'megtekintes' HTML and parse it into Bekezdes units.
         Attaches indokolás text if present.
+
+        IMPORTANT: The megtekintes page is a Vue.js SPA — the actual content
+        is loaded via JavaScript, so the raw HTML has no <p>/<div> paragraphs.
+        We try the HTML first, but if the parser returns nothing, we fall
+        back to the PDF (letoltes) endpoint and use pdfplumber.
         """
+        bekezdes_list: list[Bekezdes] = []
+        html_parse_failed = False
+
         try:
             html = self.get(meta.megtekintes_url)
             bekezdes_list = self._parse_issue_html(html)
         except requests.RequestException as e:
-            logger.warning("megtekintes fetch failed for %s: %s — trying PDF", meta.issue_id, e)
-            return self.fetch_issue_pdf(meta)
+            logger.warning(
+                "megtekintes fetch failed for %s: %s — trying PDF",
+                meta.issue_id, e,
+            )
+            html_parse_failed = True
+
+        # If HTML parser found nothing, the page is probably a SPA — try PDF
+        if not bekezdes_list and not html_parse_failed:
+            logger.info(
+                "megtekintes HTML yielded 0 bekezdések for %s — "
+                "falling back to PDF (SPA-rendered content)",
+                meta.issue_id,
+            )
+            try:
+                bekezdes_list = self.fetch_issue_pdf(meta)
+            except Exception as e:
+                logger.warning("PDF fallback failed for %s: %s", meta.issue_id, e)
+                return []
+
+        if not bekezdes_list:
+            return []
 
         # Fetch indokolás if present
         if meta.has_indokolas and meta.indokolas_url:
