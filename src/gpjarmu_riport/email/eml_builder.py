@@ -38,7 +38,12 @@ def _get_env() -> Environment:
 
 
 def _html_to_text(html: str) -> str:
-    """Crude HTML→text for the text/plain alternative."""
+    """Crude HTML→text for the text/plain alternative.
+
+    Used as a fallback by tests; in production we now build the text body
+    directly from the structured data via _build_text_body(), which gives
+    much better control over whitespace, separator lines, and section breaks.
+    """
     text = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
@@ -51,11 +56,89 @@ def _html_to_text(html: str) -> str:
         .replace("&gt;", ">")
         .replace("&quot;", '"')
         .replace("&#39;", "'")
+        .replace("&middot;", " · ")
+        .replace("&rarr;", " -> ")
+        .replace("&ndash;", "-")
+        .replace("&sect;", "§")
+        .replace("&ge;", ">=")
     )
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n[ \t]+", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def _build_text_body(
+    *,
+    run_date: str,
+    lookback_start: str,
+    lookback_end: str,
+    issues_scanned: int,
+    new_items_count: int,
+    grouped_issues: list[dict[str, Any]],
+    relevance_threshold: float,
+) -> str:
+    """Build the text/plain body from the structured data, not from the HTML.
+
+    Building text from HTML loses whitespace between elements (especially
+    between adjacent <span> badges in the same line), and the result is
+    hard to read. Building from structured data gives a plain-text email
+    that renders cleanly in every text-only or 'prefer plain text' client.
+    """
+    lines: list[str] = []
+    sep = "=" * 72
+
+    lines.append("Céges Gépjármű Havi Riport")
+    lines.append(f"Céges Gépjármű — Magyar Közlöny Havi Riport — {run_date}")
+    lines.append("")
+    lines.append(
+        f"Futtatás dátuma: {run_date}\n"
+        f"Lookback: {lookback_start} -> {lookback_end}\n"
+        f"Feldolgozott lapszámok: {issues_scanned}\n"
+        f"Új változások: {new_items_count}"
+    )
+    lines.append(sep)
+
+    if new_items_count == 0:
+        lines.append(
+            "Ebben a futásban nem találtam új, a céges gépjármű-témakört "
+            "érintő bekezdést a Magyar Közlönyben."
+        )
+        lines.append(f"A figyelt időablak: {lookback_start} - {lookback_end}.")
+    else:
+        for issue in grouped_issues:
+            lines.append("")
+            lines.append(f"Magyar Közlöny {issue['number']} ({issue['date']})")
+            lines.append("-" * 72)
+            for item in issue["items"]:
+                lines.append("")
+                lines.append(f"§ {item['anchor']} — {item['one_line_summary_hu']}")
+                lines.append(f"  Relevancia: {item['score']:.2f}")
+                topics = ", ".join(item.get("matched_topics") or []) or "(nincs)"
+                lines.append(f"  Témák: {topics}")
+                lines.append("")
+                lines.append(f"  {item['expansion_hu']}")
+                if item.get("key_dates_hu"):
+                    lines.append("")
+                    lines.append(f"  Határidők: {', '.join(item['key_dates_hu'])}")
+                if item.get("action_items_hu"):
+                    lines.append("")
+                    lines.append("  Teendők:")
+                    for a in item["action_items_hu"]:
+                        lines.append(f"    - {a}")
+                if item.get("indokolas_url"):
+                    lines.append("")
+                    lines.append(f"  Indokolás: {item['indokolas_url']}")
+
+    lines.append("")
+    lines.append(sep)
+    lines.append(
+        "Automatikusan generálva · Forrás: https://magyarkozlony.hu · "
+        f"Szűrési küszöb: relevancia >= {relevance_threshold:.2f} (tág) · "
+        "Témakör: Gépjármű / Céges Gépjármű"
+    )
+
+    return "\n".join(lines)
 
 
 def render_html(
@@ -101,7 +184,18 @@ def build_eml(
         grouped_issues=grouped_issues,
         relevance_threshold=settings.relevance_threshold,
     )
-    text_body = _html_to_text(html_body)
+    # Build the text body from the structured data, not from the HTML.
+    # This avoids the "words running together" problem where adjacent
+    # badge <span>s have no whitespace between them in the plain-text view.
+    text_body = _build_text_body(
+        run_date=run_date,
+        lookback_start=lookback_start,
+        lookback_end=lookback_end,
+        issues_scanned=issues_scanned,
+        new_items_count=new_items_count,
+        grouped_issues=grouped_issues,
+        relevance_threshold=settings.relevance_threshold,
+    )
 
     subject = f"{settings.email_subject_prefix} {run_date} – {new_items_count} új változás"
 
