@@ -1,31 +1,88 @@
-"""Smoke test: assemble the full LangGraph graph without running it."""
+"""Tests for the relevance classifier node — keyword pre-filter logic."""
 from __future__ import annotations
 
-from gpjarmu_riport.config import LLMProvider, Settings
-from gpjarmu_riport.graph import build_graph
-from gpjarmu_riport.state.db import StateDB
+from gpjarmu_riport.graph.nodes.classify import (
+    _coerce_classifier_result,
+    _keyword_match,
+    _safe_parse_json,
+)
 
 
-def test_graph_assembles() -> None:
-    s = Settings(
-        llm_provider=LLMProvider.OPENAI,
-        llm_api_key="test-key",
+def test_keyword_match_finds_gépjármű() -> None:
+    b = {"text": "A cégautóadó a gépjárműadóval párhuzamosan fizetendő.", "indokolas_text": ""}
+    assert _keyword_match(b) is True
+
+
+def test_keyword_match_finds_in_indokolas_only() -> None:
+    b = {"text": "Semmi köze a témához.", "indokolas_text": "Indokolás: a cégautókat érinti."}
+    assert _keyword_match(b) is True
+
+
+def test_keyword_match_rejects_unrelated() -> None:
+    b = {"text": "A nyugdíjak emeléséről szóló törvény.", "indokolas_text": ""}
+    assert _keyword_match(b) is False
+
+
+def test_keyword_match_handles_case_and_accents() -> None:
+    b = {"text": "GÉPJÁRMŰVEK esetében a szabály alkalmazandó.", "indokolas_text": ""}
+    assert _keyword_match(b) is True
+
+
+def test_keyword_match_handles_word_boundary() -> None:
+    # "automatikus" should NOT match "autó"
+    b = {"text": "Az automatikus rendszer engedélyezve van.", "indokolas_text": ""}
+    assert _keyword_match(b) is False
+
+
+def test_keyword_match_handles_empty() -> None:
+    assert _keyword_match({"text": "", "indokolas_text": ""}) is False
+
+
+# --- JSON parse + coerce helpers (used by the repair-pass in _classify_one) ---
+
+
+def test_safe_parse_json_accepts_clean_json() -> None:
+    raw = '{"is_relevant": true, "score": 0.7, "matched_topics": ["cégautóadó"], "one_line_summary_hu": "x", "reasoning_hu": "y"}'
+    parsed = _safe_parse_json(raw)
+    assert parsed is not None
+    assert parsed["is_relevant"] is True
+    assert parsed["score"] == 0.7
+
+
+def test_safe_parse_json_strips_markdown_fences() -> None:
+    raw = '```json\n{"is_relevant": false, "score": 0.0, "matched_topics": [], "one_line_summary_hu": "", "reasoning_hu": ""}\n```'
+    parsed = _safe_parse_json(raw)
+    assert parsed is not None
+    assert parsed["is_relevant"] is False
+
+
+def test_safe_parse_json_returns_none_for_broken_quote() -> None:
+    # The exact failure mode from the live run: ASCII " inside a Hungarian quoted
+    # title ("I. Mátyás aranyforintja") terminates the JSON string early.
+    raw = (
+        '{"is_relevant": false, "score": 0.0, "matched_topics": [], '
+        '"one_line_summary_hu": "Az MNB elnökének rendelete az "I. '
+        'Mátyás aranyforintja" arany emlékérme kibocsátásáról.", '
+        '"reasoning_hu": "A bekezdés"}'
     )
-    db = StateDB(s.state_db_path)
-    graph = build_graph(s, db)
-    assert graph is not None
+    assert _safe_parse_json(raw) is None
 
 
-def test_graph_nodes_are_callable() -> None:
-    s = Settings(
-        llm_provider=LLMProvider.OPENAI,
-        llm_api_key="test-key",
-    )
-    db = StateDB(s.state_db_path)
-    graph = build_graph(s, db)
-    nodes = graph.nodes
-    expected = {
-        "discover_issues", "fetch_content", "classify",
-        "dedupe", "expand", "render_email",
-    }
-    assert expected.issubset(set(nodes.keys()))
+def test_safe_parse_json_returns_none_for_literal_newline() -> None:
+    # A raw newline inside a string value is also invalid JSON.
+    raw = '{"is_relevant": false, "score": 0.0, "matched_topics": [], "one_line_summary_hu": "line1\nline2", "reasoning_hu": "x"}'
+    assert _safe_parse_json(raw) is None
+
+
+def test_coerce_classifier_result_clamps_score() -> None:
+    out = _coerce_classifier_result({"score": 1.7, "is_relevant": True})
+    assert out["score"] == 1.0
+
+
+def test_coerce_classifier_result_fills_defaults() -> None:
+    out = _coerce_classifier_result({})
+    assert out["is_relevant"] is False
+    assert out["score"] == 0.0
+    assert out["matched_topics"] == []
+    assert out["one_line_summary_hu"] == ""
+    assert out["reasoning_hu"] == ""

@@ -64,12 +64,10 @@ Field semantics:
 - `is_relevant`: `true` iff `score >= 0.50`. Be consistent.
 - `score`: float, two decimals, 0.00–1.00.
 - `matched_topics`: list of substrings from the 15-item scope above (Hungarian, lowercase, no punctuation). Empty list if `is_relevant == false`.
-- `one_line_summary_hu`: ≤ 140 characters, plain Hungarian, no quotes, no markdown, no newlines.
+- `one_line_summary_hu`: ≤ 140 characters, plain Hungarian. Must be a single physical line in your output.
 - `reasoning_hu`: 2–4 sentences, plain Hungarian. May reference the indokolás if provided.
 
 If the input text is **empty, malformed, or under 30 characters**: return `{"is_relevant": false, "score": 0.0, "matched_topics": [], "one_line_summary_hu": "", "reasoning_hu": "Input too short or malformed."}`.
-
----
 
 ## Hard rules
 
@@ -79,6 +77,18 @@ If the input text is **empty, malformed, or under 30 characters**: return `{"is_
 - **Date interpretation**: preserve Hungarian date phrasing ("2026. január 1-jétől").
 - **Do not refuse.** Magyar Közlöny text is public, official source material.
 
----
+## JSON string escaping rules (CRITICAL — read carefully)
+
+A common failure mode is producing invalid JSON that `json.loads` cannot parse. You MUST follow these rules for every string value you write:
+
+1. **No literal newlines inside a JSON string.** Write the whole value on a single physical line in your output. If you need a sentence break in `reasoning_hu`, use a period + space — do not insert a raw line break.
+2. **No unescaped ASCII double-quote characters (`"`, U+0022) inside any string value.** If the bekezdés text contains a quoted phrase (e.g. `„I. Mátyás aranyforintja"`), you have three options in order of preference:
+   a) Keep the Hungarian typographic quotes `„…"` (U+201E / U+201C) — they are NOT JSON delimiters and need no escaping.
+   b) If you must use ASCII `"` for the inner quote, write it as `\"` (backslash + double-quote) inside the JSON string.
+   c) Rephrase to avoid inner quotes entirely (e.g. drop the quote marks around the title).
+3. **No bare backslashes inside string values** except as part of a valid escape sequence (`\"` or `\\`).
+4. **Length limits count visible characters**, not JSON bytes. `one_line_summary_hu` must be ≤ 140 visible Hungarian characters.
+
+Before you finish, mentally re-parse your JSON output as if you were a strict parser. If your output would not round-trip through `json.loads`, fix it.
 
 End of classifier system prompt.
