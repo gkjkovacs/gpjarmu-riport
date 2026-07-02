@@ -232,3 +232,39 @@ python run.py init-db --force
 ## Licenc
 
 MIT. Lásd [LICENSE](LICENSE).
+
+## Mintaripport
+
+Egy tipikus .eml kimenet a `gpjarmu-2026-07-02.eml` formátumban (subject: `[Céges Gépjármű riport] 2026-07-02 – 1 új változás`):
+
+```
+From: gpjarmu-riport@localhost
+To: you@example.com
+Subject: =?utf-8?b?W0PDqWdlcyBHw6lwasOhcm3FsSByaXBvcnRdIDIwMjYtMDctMDIg4oCTIDEgw7pqIHbDoWx0b3rDoXM=?=
+Content-Type: multipart/alternative; boundary="…"
+
+--…
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Céges Gépjármű — Magyar Közlöny Havi Riport
+Futtatás dátuma: 2026-07-02  ·  Lookback: 2026-06-02 → 2026-07-02  ·  …
+
+Magyar Közlöny 2026. évi 83. szám (2026-07-01)
+  § 12. § (3)  A cégautóadó mértéke 2026. január 1-jétől emelkedik.
+    Relevancia: 0.82 · cégautóadó
+    A bekezdés a cégautóadóról szóló törvény 3. §-át módosítja: a havi fix adó 18 000 Ft-ról 19 500 Ft-ra emelkedik. …
+    Határidők: 2026. január 1.
+    • Frissíteni a havi költségvetési tervet az új adómértékkel.
+    📄 Indokolás megnyitása
+
+--…
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+<!doctype html>
+<html lang="hu">
+… (színes, topic-badget tartalmazó HTML — megnyitható böngészőben)
+```
+
+A teljes HTML body inline CSS-t használ (mail-kliens kompatibilis), és tartalmazza a téma-badge-eket, anchorokat, határidőket, action item-eket és az indokolás linket.

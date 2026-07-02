@@ -68,4 +68,3 @@ Desktop.ini
 
 # Sensitive local files
 *.eml
-!docs/samples/*.eml
