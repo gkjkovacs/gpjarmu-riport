@@ -26,18 +26,39 @@ def _settings() -> Settings:
 
 _HOMEPAGE_HTML = """
 <html><body>
-<table>
-  <tr>
-    <td><a href="/dokumentumok/abc123/megtekintes">2026. évi 83. szám</a></td>
-    <td>2026. július 1.</td>
-    <td>Indokolás</td>
-  </tr>
-  <tr>
-    <td><a href="/dokumentumok/def456/megtekintes">2026. évi 28. szám</a></td>
-    <td>2026. június 30.</td>
-    <td>Hivatalos Értesítő</td>
-  </tr>
-</table>
+<div class="fresh-row">
+  <div class="margin-bottom-5 row" itemscope itemtype="http://schema.org/Newspaper">
+    <meta content="application/pdf" itemprop="fileFormat"/>
+    <meta content="https://magyarkozlony.hu/dokumentumok/abc123/megtekintes" itemprop="url"/>
+    <div class="col-xs-5">
+      <a class="text-success hidden-xs" href="https://magyarkozlony.hu/dokumentumok/abc123/megtekintes" title="">
+        <b itemprop="name">Magyar Közlöny 2026. évi 83. szám</b>
+      </a>
+    </div>
+    <div class="col-xs-3 text-lowercase text-sm">
+      <meta content="2026-07-01" itemprop="datePublished"/>
+      2026. július 1.
+    </div>
+    <div class="col-xs-3">
+      <a href="https://magyarkozlony.hu/dokumentumok/abc123/letoltes">PDF</a>
+    </div>
+    <a href="https://magyarkozlony.hu/indoklasok/abc123"> »Indokolások</a>
+  </div>
+</div>
+<div class="fresh-row">
+  <div class="margin-bottom-5 row" itemscope>
+    <meta content="https://magyarkozlony.hu/dokumentumok/def456/megtekintes" itemprop="url"/>
+    <div class="col-xs-5">
+      <a href="https://magyarkozlony.hu/dokumentumok/def456/megtekintes">
+        <b itemprop="name">Hivatalos Értesítő 2026. évi 28. szám</b>
+      </a>
+    </div>
+    <div class="col-xs-3">
+      <meta content="2026-06-30" itemprop="datePublished"/>
+      2026. június 30.
+    </div>
+  </div>
+</div>
 </body></html>
 """
 
