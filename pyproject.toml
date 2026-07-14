@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gpjarmu-riport"
 version = "0.1.0"
-description = "Havi Céges Gépjármű Magyar Közlöny monitor — LangGraph pipeline that scrapes issues, classifies paragraphs semantically, deduplicates, and emits a single .txt report."
+description = "Havi Céges Gépjármű Magyar Közlöny monitor — LangGraph pipeline that scrapes issues, classifies paragraphs semantically, deduplicates, and emits a .txt report (optionally emailed via SMTP, e.g. freemail.hu:587)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

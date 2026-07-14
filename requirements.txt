@@ -28,9 +28,11 @@ pdfplumber>=0.11,<1.0
 jinja2>=3.1,<4.0
 
 # --- Email ---
-# No extra deps for the .txt report (plain UTF-8 string).
-# The legacy .eml / SMTP transport is in src/gpjarmu_riport/email/smtp.py,
-# kept for future re-enablement but not wired into the main render path.
+# --- Email (SMTP) ---
+# No external deps — smtplib, email.message, and ssl are all in the stdlib.
+# The SMTP transport is in src/gpjarmu_riport/email/smtp.py and is wired into
+# the render_email node when settings.smtp_enabled is True. Default target
+# is freemail.hu:587 (STARTTLS), but host/port/security are all configurable.
 
 # --- CLI / output ---
 rich>=13.7,<14.0

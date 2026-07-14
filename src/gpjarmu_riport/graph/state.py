@@ -62,7 +62,7 @@ class GraphState(TypedDict, total=False):
 
     # --- Render node output ---
     report_path: str                    # path to the saved .txt report
-    eml_sent: bool                      # always False now (SMTP no longer wired up)
+    email_sent: bool                    # True if SMTP send succeeded
     new_items_count: int                # convenience counter
 
     # --- Diagnostics ---

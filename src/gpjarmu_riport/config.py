@@ -89,12 +89,44 @@ class Settings(BaseSettings):
     email_to: str = Field(default="you@example.com")
     email_subject_prefix: str = Field(default="[Céges Gépjármű riport]")
 
-    # ---- SMTP ----
+    # ---- SMTP (optional) ----
     smtp_enabled: bool = Field(default=False)
-    smtp_host: str = Field(default="smtp.gmail.com")
+    smtp_host: str = Field(
+        default="smtp.freemail.hu",
+        description="SMTP server hostname. Default: freemail.hu (port 587 + STARTTLS).",
+    )
     smtp_port: int = Field(default=587, ge=1, le=65535)
-    smtp_username: str = Field(default="")
-    smtp_password: str = Field(default="")
+    smtp_security: str = Field(
+        default="starttls",
+        description=(
+            "Connection security. One of: "
+            "'starttls' (recommended, port 587), "
+            "'ssl' (implicit TLS, port 465), "
+            "'none' (plain, NOT recommended)."
+        ),
+    )
+    smtp_username: str = Field(
+        default="",
+        description=(
+            "SMTP username — for freemail.hu this is your FULL email address "
+            "(e.g. gergely.kovacs@freemail.hu), not just the local part."
+        ),
+    )
+    smtp_password: str = Field(
+        default="",
+        description=(
+            "SMTP password — the same password you use to log in at "
+            "https://accounts.freemail.hu (NOT the same as the webmail token)."
+        ),
+    )
+    smtp_timeout: int = Field(default=60, ge=5, le=600)
+    smtp_attachment: bool = Field(
+        default=True,
+        description=(
+            "If true, the .txt report is also attached to the email as a file. "
+            "If false, the report body is the email body itself (plain text)."
+        ),
+    )
 
     # ---- Logging ----
     log_level: str = Field(default="INFO")
@@ -118,6 +150,16 @@ class Settings(BaseSettings):
             raise ValueError(f"Invalid log level: {v}")
         return v
 
+    @field_validator("smtp_security")
+    @classmethod
+    def _validate_smtp_security(cls, v: str) -> str:
+        v = v.lower().strip()
+        if v not in ("starttls", "ssl", "none"):
+            raise ValueError(
+                f"Invalid smtp_security: {v!r}. Must be 'starttls', 'ssl', or 'none'."
+            )
+        return v
+
     def ensure_dirs(self) -> None:
         """Create output and data dirs if missing."""
         self.state_db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -132,10 +174,25 @@ class Settings(BaseSettings):
                 "LLM_API_KEY is empty. Set it in .env — get your key at "
                 "https://ollama.com/settings (or your provider's dashboard)."
             )
-        if self.smtp_enabled and not self.smtp_username:
-            raise ValueError("SMTP_ENABLED=true but SMTP_USERNAME is empty.")
-        if self.smtp_enabled and not self.smtp_password:
-            raise ValueError("SMTP_ENABLED=true but SMTP_PASSWORD is empty.")
+        if self.smtp_enabled:
+            if not self.smtp_username:
+                raise ValueError(
+                    "SMTP_ENABLED=true but SMTP_USERNAME is empty. "
+                    "For freemail.hu this must be your full email address "
+                    "(e.g. gergely.kovacs@freemail.hu), not just the local part."
+                )
+            if not self.smtp_password:
+                raise ValueError(
+                    "SMTP_ENABLED=true but SMTP_PASSWORD is empty. "
+                    "Use the same password you log in with at "
+                    "https://accounts.freemail.hu."
+                )
+            # freemail.hu port guidance
+            if "freemail.hu" in self.smtp_host.lower() and self.smtp_port not in (465, 587):
+                raise ValueError(
+                    f"freemail.hu does not accept SMTP connections on port {self.smtp_port}. "
+                    f"Use port 587 (STARTTLS, default) or 465 (SSL)."
+                )
 
 
 _cached_settings: Settings | None = None

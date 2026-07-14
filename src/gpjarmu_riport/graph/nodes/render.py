@@ -1,14 +1,13 @@
 """
 Graph node: render_email
 
-Assembles the final .txt report and persists the new items to the state DB
-so they don't get reported again.
+Assembles the final .txt report, persists the new items to the state DB
+so they don't get reported again, and (optionally) ships the report
+to the configured SMTP server as a plain-text email or .txt attachment.
 
-History: this used to produce a multipart/alternative .eml file and
-(optionally) send it via SMTP. We now produce a simple UTF-8 .txt file —
-the user reads it directly, or the Windows Task Scheduler can attach it
-to an email later. The SMTP transport is kept in the email package for
-future re-enablement but is no longer called from the pipeline.
+The SMTP transport defaults to freemail.hu:587 (STARTTLS), but the
+host/port/security are all configurable — any standard SMTP server
+works as long as SMTP_USERNAME and SMTP_PASSWORD are set.
 """
 
 from __future__ import annotations
@@ -19,14 +18,14 @@ from datetime import date
 from pathlib import Path
 
 from ...config import Settings
-from ...email import render_and_save_report
+from ...email import build_report_email, render_and_save_report, send_email
 from ...state.db import ReportedItem, StateDB
 
 logger = logging.getLogger(__name__)
 
 
 def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
-    """Build the .txt report, save it, and persist state."""
+    """Build the .txt report, save it, optionally email it, persist state."""
     run_date = state["run_date"]
     lookback_start = state["lookback_start"]
     lookback_end = state["lookback_end"]
@@ -55,8 +54,12 @@ def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
     ]
 
     report_path: Path | None = None
+    report_text: str = ""
+    email_sent = False
+    email_error: str | None = None
 
     if not settings.dry_run:
+        # 1. Save the .txt report
         report_path = render_and_save_report(
             output_dir=settings.output_dir,
             run_date=run_date,
@@ -67,8 +70,30 @@ def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
             grouped_issues=grouped_issues,
             settings=settings,
         )
+        # 2. Optionally email it
+        if settings.smtp_enabled and new_items_count > 0:
+            try:
+                # Re-read the file we just wrote so we send exactly what's on disk
+                report_text = report_path.read_text(encoding="utf-8")
+                msg = build_report_email(
+                    report_text=report_text,
+                    run_date=run_date,
+                    new_items_count=new_items_count,
+                    report_path=report_path,
+                    settings=settings,
+                )
+                send_email(msg, settings)
+                email_sent = True
+            except Exception as e:
+                # Don't abort the whole run if SMTP fails — the .txt is already saved
+                logger.exception("SMTP send failed (report file is saved on disk)")
+                email_error = f"SMTP send failed: {type(e).__name__}: {e}"
+        elif settings.smtp_enabled and new_items_count == 0:
+            logger.info(
+                "SMTP enabled but no new items to report — skipping email send"
+            )
     else:
-        logger.info("DRY_RUN=true — skipping .txt report write")
+        logger.info("DRY_RUN=true — skipping .txt report write and SMTP send")
 
     # Persist state
     persisted = 0
@@ -126,16 +151,20 @@ def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
         db.bump_total_reported(persisted)
 
     logger.info(
-        "Run complete. New items: %d / persisted: %d / report: %s",
+        "Run complete. New items: %d / persisted: %d / report: %s / email: %s",
         new_items_count, persisted,
         str(report_path) if report_path else "(dry run)",
+        ("sent" if email_sent else ("error: " + email_error if email_error else "skipped")),
     )
 
-    return {
+    result: dict = {
         "report_path": str(report_path) if report_path else "",
-        "eml_sent": False,  # SMTP path no longer wired up
+        "email_sent": email_sent,
         "new_items_count": new_items_count,
     }
+    if email_error:
+        result["errors"] = [email_error]
+    return result
 
 
 __all__ = ["render_email"]

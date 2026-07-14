@@ -63,13 +63,24 @@ def _run_pipeline_and_report(seed: bool) -> None:
 
     new_count = result.get("new_items_count", 0)
     report_path = result.get("report_path", "")
+    email_sent = result.get("email_sent", False)
     errors = result.get("errors", [])
     warnings = result.get("warnings", [])
+
+    if email_sent:
+        email_status = "sent"
+    elif settings.smtp_enabled and errors:
+        email_status = "FAILED (report file is still saved)"
+    elif settings.smtp_enabled:
+        email_status = "skipped (no new items)"
+    else:
+        email_status = "disabled (SMTP_ENABLED=false)"
 
     panel = Panel(
         f"[bold green]✓ Run complete[/bold green]\n\n"
         f"New items: [bold]{new_count}[/bold]\n"
         f"Report file: {report_path or '(none — dry run or empty)'}\n"
+        f"Email: {email_status}\n"
         f"Issues scanned: {result.get('issues_scanned', 0)}\n"
         f"Warnings: {len(warnings)}\n"
         f"Errors: {len(errors)}",

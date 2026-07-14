@@ -86,7 +86,49 @@ start output\gpjarmu-2026-07-02.txt
 Get-Content output\gpjarmu-2026-07-02.txt
 ```
 
-### 8. Havi ütemezés (Windows Task Scheduler)
+### 8. E-mail küldés (freemail.hu)
+
+Ha szeretnéd, hogy a pipeline a `.txt` riportot **automatikusan e-mailben is elküldje**, a freemail.hu SMTP-jét használhatod. A beállítás a `.env` fájlban:
+
+```bash
+# .env — a freemail-es szekció
+SMTP_ENABLED=true
+SMTP_HOST=smtp.freemail.hu
+SMTP_PORT=587
+SMTP_SECURITY=starttls
+SMTP_USERNAME=gergely.kovacs@freemail.hu
+SMTP_PASSWORD=a_freemail_jelszavad
+SMTP_ATTACHMENT=true
+
+EMAIL_FROM=gergely.kovacs@freemail.hu
+EMAIL_TO=akos@ceged.hu
+```
+
+**A freemail.hu SMTP beállításai** (a freemail hivatalos súgójából, https://accounts.freemail.hu/a/help/faq/clients):
+
+| Mező | Érték |
+|---|---|
+| SMTP host | `smtp.freemail.hu` |
+| Port | `587` (STARTTLS, ajánlott) vagy `465` (SSL) |
+| Felhasználónév | A teljes e-mail cím (nem csak a helyi rész!) |
+| Jelszó | A webes felületen (https://accounts.freemail.hu) használt jelszó |
+| Titkosítás | STARTTLS (port 587) vagy SSL (port 465) |
+
+**Fontos árnyalatok:**
+
+1. **A `SMTP_USERNAME` mezőbe a teljes e-mail cím kell** (pl. `gergely.kovacs@freemail.hu`), nem csak `gergely.kovacs`. A freemail ezt várja.
+2. **Az `EMAIL_FROM` értéke a freemail-es címed legyen** — egyes SMTP szerverek (köztük a freemail) visszautasítják a levelet, ha a `From:` fejléc nem egyezik a hitelesített felhasználóval.
+3. **Ha a jelszó speciális karaktereket tartalmaz** (pl. `!`, `#`, `&`), idézőjelbe kell tenni a `.env`-ben: `SMTP_PASSWORD="Titok!123"`.
+4. **A 2-faktoros auth (2FA) nem érintett** — a freemail.hu jelenlegi szabályzata szerint a normál jelszóval is működik a SMTP, nem kell app-password (szemben a Gmaillel).
+
+**E-mail formátum:**
+
+- Ha `SMTP_ATTACHMENT=true` (alapértelmezett): rövid cover üzenet + `gpjarmu-<dátum>.txt` mellékletként.
+- Ha `SMTP_ATTACHMENT=false`: a teljes riport szövege a levelező törzsében, nincs melléklet.
+
+**Hibakezelés:** ha a küldés nem sikerül (rossz jelszó, hálózati hiba), a `.txt` fájl akkor is mentődik — a futás nem abortál, csak a `Run complete` panelen látod, hogy `Email: FAILED (report file is still saved)`.
+
+### 9. Havi ütemezés (Windows Task Scheduler)
 
 ```powershell
 # Feladat regisztrálása: minden hónap 1. napján 08:00-kor
@@ -199,7 +241,15 @@ Minden konfigurációs érték a `.env` fájlban van, Pydantic-kal validálva. A
 | `RELEVANCE_THRESHOLD` | `0.50` | Relevancia küszöb (0–1) |
 | `STATE_DB_PATH` | `./data/state.db` | SQLite state DB helye |
 | `OUTPUT_DIR` | `./output` | .txt riportok célmappája |
-| `SMTP_ENABLED` | `false` | Már nem használt — a `.txt` riportot a Windows Task Scheduler küldi tovább |
+| `SMTP_ENABLED` | `false` | `true` esetén a riport a `.txt` fájlba mentés után e-mailben is elküldésre kerül |
+| `SMTP_HOST` | `smtp.freemail.hu` | SMTP szerver (freemail/Gmail/Outlook/custom) |
+| `SMTP_PORT` | `587` | `587` (STARTTLS) vagy `465` (SSL) |
+| `SMTP_SECURITY` | `starttls` | `starttls` / `ssl` / `none` |
+| `SMTP_USERNAME` | _(kötelező SMTP-nél)_ | Freemail esetén a **teljes e-mail cím** (pl. `gergely.kovacs@freemail.hu`) |
+| `SMTP_PASSWORD` | _(kötelező SMTP-nél)_ | A freemail webes jelszó (https://accounts.freemail.hu) |
+| `SMTP_ATTACHMENT` | `true` | `true`: `.txt` melléklet + rövid cover; `false`: teljes riport a törzsben |
+| `EMAIL_FROM` | `gpjarmu-riport@localhost` | Feladó (a freemail-es felhasználónak meg kell egyeznie a `SMTP_USERNAME` címmel) |
+| `EMAIL_TO` | `you@example.com` | Címzett |
 
 ---
 
