@@ -44,10 +44,24 @@ def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
         key=lambda kv: (kv[0][1], kv[0][0]),
         reverse=True,
     )
+
+    # Build a quick lookup from issue number (full name, e.g. "Magyar Közlöny
+    # 2026. évi 71. szám") to its megtekintes_url, so we can attach the per-issue
+    # link to the report. The scraper stores both `number` (the long name) and
+    # `issue_id` (the short slug like "2026/71") in state["issues"]; the
+    # classify/expand nodes forward the long name as issue_number, which is
+    # what we group on below, so that's what we key the URL lookup on.
+    url_by_issue: dict[str, str] = {
+        i.get("number", ""): i.get("megtekintes_url", "")
+        for i in state.get("issues", [])
+        if i.get("number")
+    }
+
     grouped_issues = [
         {
             "number": number,
             "date": date_,
+            "url": url_by_issue.get(number, ""),
             "items": sorted(items, key=lambda i: i["anchor"]),
         }
         for (number, date_), items in sorted_issues

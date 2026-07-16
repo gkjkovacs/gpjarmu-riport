@@ -22,6 +22,7 @@ def _sample_grouped_issues() -> list[dict]:
     return [{
         "number": "2026. évi 83. szám",
         "date": "2026-07-01",
+        "url": "https://magyarkozlony.hu/dokumentumok/abc123/megtekintes",
         "items": [{
             "anchor": "12. § (3)",
             "one_line_summary_hu": "A cégautóadó mértéke 2026. január 1-jétől emelkedik.",
@@ -64,8 +65,55 @@ def test_build_text_report_includes_summary_and_expansion() -> None:
     assert "    - Frissíteni a havi költségvetési tervet." in body
     # Indokolás URL
     assert "https://magyarkozlony.hu/dokumentumok/abc/indokolas" in body
+    # Per-issue link (Közlöny URL)
+    assert "Ezen a linken éred el ezt a közlönyt" in body
+    assert "https://magyarkozlony.hu/dokumentumok/abc123/megtekintes" in body
     # Footer
     assert "Gépjármű / Céges Gépjármű" in body
+
+
+def test_build_text_report_includes_issue_link() -> None:
+    """The Közlöny link should appear right under the issue header."""
+    body = build_text_report(
+        run_date="2026-07-02",
+        lookback_start="2026-06-02",
+        lookback_end="2026-07-02",
+        issues_scanned=1,
+        new_items_count=1,
+        grouped_issues=_sample_grouped_issues(),
+        settings=_settings(),
+    )
+    # The link must appear AFTER the issue header and BEFORE the items
+    issue_header_pos = body.find("Magyar Közlöny 2026. évi 83. szám (2026-07-01)")
+    link_pos = body.find("Ezen a linken éred el ezt a közlönyt")
+    first_item_pos = body.find("§ 12. § (3)")
+    assert issue_header_pos != -1
+    assert link_pos != -1
+    assert first_item_pos != -1
+    assert issue_header_pos < link_pos < first_item_pos, (
+        f"link not between header and items: "
+        f"header={issue_header_pos} link={link_pos} item={first_item_pos}"
+    )
+
+
+def test_build_text_report_skips_link_when_url_missing() -> None:
+    """When the scraper can't produce a megtekintes_url, the report must
+    still render cleanly without the link line."""
+    issues = _sample_grouped_issues()
+    issues[0].pop("url", None)  # simulate missing URL
+    body = build_text_report(
+        run_date="2026-07-02",
+        lookback_start="2026-06-02",
+        lookback_end="2026-07-02",
+        issues_scanned=1,
+        new_items_count=1,
+        grouped_issues=issues,
+        settings=_settings(),
+    )
+    assert "Ezen a linken éred el ezt a közlönyt" not in body
+    # The rest of the report is still complete
+    assert "Magyar Közlöny 2026. évi 83. szám" in body
+    assert "§ 12. § (3)" in body
 
 
 def test_build_text_report_separates_topics_with_comma() -> None:

@@ -112,7 +112,17 @@ def _build_text_body(
     else:
         for issue in grouped_issues:
             lines.append("")
-            lines.append(f"Magyar Közlöny {issue['number']} ({issue['date']})")
+            # The scraper's `number` field already includes the "Magyar Közlöny"
+            # prefix (e.g. "Magyar Közlöny 2026. évi 81. szám"). We only prepend
+            # it when the field is empty or uses a short slug like "2026/81".
+            number = issue["number"]
+            if not number.startswith("Magyar Közlöny"):
+                number = f"Magyar Közlöny {number}"
+            lines.append(f"{number} ({issue['date']})")
+            if issue.get("url"):
+                lines.append(
+                    f"Ezen a linken éred el ezt a közlönyt: {issue['url']}"
+                )
             lines.append("-" * 72)
             for item in issue["items"]:
                 lines.append("")

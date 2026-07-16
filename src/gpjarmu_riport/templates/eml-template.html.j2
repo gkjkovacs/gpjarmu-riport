@@ -23,8 +23,9 @@
 {% else %}
   {% for issue in grouped_issues %}
     <h2 style="font-size: 17px; color: #0b3d91; margin: 28px 0 4px 0; padding: 6px 10px; background: #f0f4fa; border-left: 4px solid #0b3d91;">
-      Magyar Közlöny {{ issue.number }}<span style="color: #777; font-weight: normal; font-size: 13px; margin-left: 8px;">{{ issue.date }}</span>
+      {% set issue_name = issue.number %}{% if not issue.number.startswith("Magyar Közlöny") %}Magyar Közlöny {{ issue.number }}{% else %}{{ issue.number }}{% endif %}<span style="color: #777; font-weight: normal; font-size: 13px; margin-left: 8px;">{{ issue.date }}</span>
     </h2>
+    {% if issue.url %}<div style="font-size: 12px; color: #555; margin: 0 0 8px 0;">Ezen a linken éred el ezt a közlönyt: <a style="color: #0b3d91;" href="{{ issue.url }}">{{ issue.url }}</a></div>{% endif %}
     {% for item in issue["items"] %}
       <div style="border: 1px solid #e3e8f0; border-radius: 6px; padding: 12px 14px; margin: 12px 0; background: #fafcff;">
         <h3 style="font-size: 15px; margin: 0 0 6px 0; color: #1a1a1a;">
