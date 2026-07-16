@@ -34,6 +34,7 @@ def _smtp_settings(**overrides) -> Settings:
         smtp_password="secret",
         smtp_timeout=30,
         smtp_attachment=True,
+        smtp_html_attachment=True,
         email_from="ger@freemail.hu",
         email_to="peter@example.com",
     )
@@ -150,37 +151,98 @@ def test_send_email_propagates_smtp_auth_error() -> None:
 # --- mailer: build_report_email -------------------------------------------
 
 
-def test_build_report_email_with_attachment(tmp_path: Path) -> None:
-    s = _smtp_settings(smtp_attachment=True)
+def _sample_grouped_issues() -> list[dict]:
+    return [{
+        "number": "Magyar Közlöny 2026. évi 83. szám",
+        "date": "2026-07-01",
+        "url": "https://magyarkozlony.hu/dokumentumok/abc/megtekintes",
+        "items": [{
+            "anchor": "12. § (3)",
+            "one_line_summary_hu": "A cégautóadó mértéke 2026. január 1-jétől emelkedik.",
+            "score": 0.82,
+            "matched_topics": ["cégautóadó"],
+            "expansion_hu": "A bekezdés a cégautóadóról szóló törvény 3. §-át módosítja.",
+            "key_dates_hu": ["2026. január 1."],
+            "action_items_hu": ["Frissíteni a havi költségvetési tervet."],
+            "indokolas_url": None,
+        }],
+    }]
+
+
+def test_build_report_email_with_dual_attachment(tmp_path: Path) -> None:
+    """Default mode: cover + .txt + .html both attached."""
+    s = _smtp_settings()  # smtp_attachment=True, smtp_html_attachment=True
     report_path = tmp_path / "gpjarmu-2026-07-02.txt"
     msg = build_report_email(
         report_text="Full report text\n" * 50,
         run_date="2026-07-02",
+        lookback_start="2026-06-02",
+        lookback_end="2026-07-02",
+        issues_scanned=10,
         new_items_count=3,
+        grouped_issues=_sample_grouped_issues(),
         report_path=report_path,
         settings=s,
     )
     # Subject
     assert "[Céges Gépjármű riport]" in msg["Subject"]
     assert "3 új változás" in msg["Subject"]
-    # Multipart (cover + attachment)
+    # Multipart (cover + 2 attachments)
     assert msg.is_multipart()
     parts = list(msg.walk())
-    ctypes = [p.get_content_type() for p in parts]
-    assert "text/plain" in ctypes
-    # Cover body is short and includes the date + count
+    filenames = [p.get_filename() for p in parts if p.get_filename()]
+    assert "gpjarmu-2026-07-02.txt" in filenames
+    assert "gpjarmu-2026-07-02.html" in filenames
+    # .txt attachment contains the report
+    txt_part = next(p for p in parts if p.get_filename() == "gpjarmu-2026-07-02.txt")
+    assert b"Full report text" in txt_part.get_payload(decode=True)
+    assert txt_part.get_content_type() == "text/plain"
+    # .html attachment is valid HTML and contains the report content
+    html_part = next(p for p in parts if p.get_filename() == "gpjarmu-2026-07-02.html")
+    assert html_part.get_content_type() == "text/html"
+    html_payload = html_part.get_payload(decode=True).decode("utf-8")
+    assert "<!doctype html>" in html_payload.lower()
+    assert "Céges Gépjármű" in html_payload
+    assert "Ezen a linken éred el ezt a közlönyt" in html_payload
+    assert "magyarkozlony.hu/dokumentumok/abc/megtekintes" in html_payload
+    # Cover body advertises both attachments
     body = next(
         p.get_payload(decode=True).decode("utf-8")
         for p in parts
         if p.get_content_type() == "text/plain" and p.get_filename() is None
     )
-    assert "2026-07-02" in body
-    assert "3 új" in body
-    # Attachment is the full report
-    attached = next(
-        p for p in parts if p.get_filename() == "gpjarmu-2026-07-02.txt"
+    assert ".txt" in body
+    assert ".html" in body
+    assert "kattintható" in body
+
+
+def test_build_report_email_txt_only_attachment(tmp_path: Path) -> None:
+    """smtp_html_attachment=False → only .txt, no .html."""
+    s = _smtp_settings(smtp_html_attachment=False)
+    report_path = tmp_path / "gpjarmu-2026-07-02.txt"
+    msg = build_report_email(
+        report_text="Full report text\n" * 50,
+        run_date="2026-07-02",
+        lookback_start="2026-06-02",
+        lookback_end="2026-07-02",
+        issues_scanned=10,
+        new_items_count=3,
+        grouped_issues=_sample_grouped_issues(),
+        report_path=report_path,
+        settings=s,
     )
-    assert b"Full report text" in attached.get_payload(decode=True)
+    parts = list(msg.walk())
+    filenames = [p.get_filename() for p in parts if p.get_filename()]
+    assert "gpjarmu-2026-07-02.txt" in filenames
+    assert "gpjarmu-2026-07-02.html" not in filenames
+    # Cover mentions only the .txt
+    body = next(
+        p.get_payload(decode=True).decode("utf-8")
+        for p in parts
+        if p.get_content_type() == "text/plain" and p.get_filename() is None
+    )
+    assert ".html" not in body
+    assert "sima szöveg" not in body
 
 
 def test_build_report_email_body_only(tmp_path: Path) -> None:
@@ -189,7 +251,11 @@ def test_build_report_email_body_only(tmp_path: Path) -> None:
     msg = build_report_email(
         report_text="Just the body, no attachment.",
         run_date="2026-07-02",
+        lookback_start="2026-06-02",
+        lookback_end="2026-07-02",
+        issues_scanned=10,
         new_items_count=1,
+        grouped_issues=_sample_grouped_issues(),
         report_path=report_path,
         settings=s,
     )
@@ -205,7 +271,11 @@ def test_build_report_email_handles_zero_items(tmp_path: Path) -> None:
     msg = build_report_email(
         report_text="(empty report)",
         run_date="2026-07-02",
+        lookback_start="2026-06-02",
+        lookback_end="2026-07-02",
+        issues_scanned=10,
         new_items_count=0,
+        grouped_issues=[],
         report_path=report_path,
         settings=s,
     )

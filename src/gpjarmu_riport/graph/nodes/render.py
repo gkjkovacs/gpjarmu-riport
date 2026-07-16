@@ -92,7 +92,11 @@ def render_email(state: dict, settings: Settings, db: StateDB) -> dict:
                 msg = build_report_email(
                     report_text=report_text,
                     run_date=run_date,
+                    lookback_start=lookback_start,
+                    lookback_end=lookback_end,
+                    issues_scanned=state.get("issues_scanned", 0),
                     new_items_count=new_items_count,
+                    grouped_issues=grouped_issues,
                     report_path=report_path,
                     settings=settings,
                 )

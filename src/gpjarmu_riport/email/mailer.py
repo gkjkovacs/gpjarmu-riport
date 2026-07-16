@@ -1,19 +1,23 @@
 """
-High-level mailer: turn a .txt report into a properly-formatted email.
+High-level mailer: turn the report into a properly-formatted email.
 
-Two modes:
+Three modes, selected via settings flags:
 
-1. **Body mode** (smtp_attachment=False) — the report text IS the email
-   body. The recipient sees the report inline when they open the email.
-   Best for short reports; everything is visible at a glance.
+1. **Body mode** (smtp_attachment=False) — the .txt report is the email
+   body. The recipient sees the report inline.
 
-2. **Attachment mode** (smtp_attachment=True, default) — the email has
-   a short cover message and the report is attached as a .txt file.
-   Best for longer reports or when the user wants to archive the
-   report as a file. The recipient gets both a glanceable summary
-   and the full report.
+2. **Single attachment mode** (smtp_attachment=True, smtp_html_attachment=False)
+   — a short cover + .txt as the only attachment. Default for clients that
+   prefer plain text.
 
-The email is built using Python's stdlib `email.message.EmailMessage`
+3. **Dual attachment mode** (smtp_attachment=True, smtp_html_attachment=True,
+   the default) — same cover + both .txt AND .html as attachments. The
+   .html is generated on-the-fly via the Jinja2 template, so it always
+   matches the .txt content. Outlook, Gmail, and Apple Mail render the
+   .html with clickable Közlöny links and inline badges; any plain-text
+   client falls back to the .txt.
+
+The email is built with Python's stdlib `email.message.EmailMessage`
 so the only SMTP dep is the stdlib `smtplib` — no extra packages.
 """
 
@@ -26,6 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..config import Settings
+from .eml_builder import render_html
 
 logger = logging.getLogger(__name__)
 
@@ -34,20 +39,24 @@ def build_report_email(
     *,
     report_text: str,
     run_date: str,
+    lookback_start: str,
+    lookback_end: str,
+    issues_scanned: int,
     new_items_count: int,
+    grouped_issues: list[dict],
     report_path: Path | None,
     settings: Settings,
 ) -> EmailMessage:
     """
-    Build an EmailMessage from the report text.
+    Build an EmailMessage from the structured report.
 
-    - If settings.smtp_attachment is True and report_path is given, the
-      .txt is attached as a file (multipart/mixed). The body is a short
-      cover message with new_items_count and run_date.
-    - If smtp_attachment is False, the full report text is the body
-      (text/plain only, no attachment).
+    The .txt body is always required (it powers the cover, the body-only
+    mode, and the .txt attachment). When smtp_html_attachment is true and
+    we're in attachment mode, the HTML is rendered from grouped_issues via
+    the same Jinja2 template that powers the HTML report.
 
-    Returns the EmailMessage, ready to hand to smtp.send_email().
+    The HTML is *not* saved to disk — it's generated on-the-fly and only
+    sent as an attachment (no extra file in output/).
     """
     subject = (
         f"{settings.email_subject_prefix} {run_date} "
@@ -61,8 +70,9 @@ def build_report_email(
     msg["Date"] = format_datetime(datetime.now(timezone.utc))
 
     if settings.smtp_attachment and report_path is not None:
-        # Short cover + full report attached
-        cover = _build_cover(run_date, new_items_count, report_path)
+        # Cover + .txt (+ optional .html) attachments
+        cover = _build_cover(run_date, new_items_count, report_path,
+                            has_html=settings.smtp_html_attachment)
         msg.set_content(cover, subtype="plain", charset="utf-8")
         msg.add_attachment(
             report_text.encode("utf-8"),
@@ -70,12 +80,35 @@ def build_report_email(
             subtype="plain",
             filename=report_path.name,
         )
-        logger.info(
-            "Built email with attachment: %s (%d bytes)",
-            report_path.name, len(report_text),
-        )
+        if settings.smtp_html_attachment:
+            html_body = render_html(
+                run_date=run_date,
+                lookback_start=lookback_start,
+                lookback_end=lookback_end,
+                issues_scanned=issues_scanned,
+                new_items_count=new_items_count,
+                grouped_issues=grouped_issues,
+                relevance_threshold=settings.relevance_threshold,
+            )
+            html_name = report_path.stem + ".html"
+            msg.add_attachment(
+                html_body.encode("utf-8"),
+                maintype="text",
+                subtype="html",
+                filename=html_name,
+            )
+            logger.info(
+                "Built email with dual attachments: %s (%d B) + %s (%d B)",
+                report_path.name, len(report_text),
+                html_name, len(html_body),
+            )
+        else:
+            logger.info(
+                "Built email with single .txt attachment: %s (%d bytes)",
+                report_path.name, len(report_text),
+            )
     else:
-        # Full report in the body
+        # Full report in the body (plain text)
         msg.set_content(report_text, subtype="plain", charset="utf-8")
         logger.info(
             "Built email with full report in body (%d bytes)", len(report_text),
@@ -84,15 +117,30 @@ def build_report_email(
     return msg
 
 
-def _build_cover(run_date: str, new_items_count: int, report_path: Path) -> str:
-    """The short text the recipient sees before opening the attachment."""
+def _build_cover(
+    run_date: str,
+    new_items_count: int,
+    report_path: Path,
+    has_html: bool,
+) -> str:
+    """The short text the recipient sees before opening the attachments."""
+    if has_html:
+        attach_line = (
+            f"A részleteket két formátumban csatoltuk:\n"
+            f"  - {report_path.name} (sima szöveg, bármilyen kliensben olvasható)\n"
+            f"  - {report_path.stem}.html (színes, kattintható linkek, "
+            f"Outlook/Gmail/Webmail kliensben ajánlott)"
+        )
+    else:
+        attach_line = f"Részletek a mellékelt fájlban: {report_path.name}"
+
     return (
         f"Céges Gépjármű Havi Riport — {run_date}\n"
         f"\n"
         f"Ebben a hónapban {new_items_count} új, a céges gépjárműveket "
         f"érintő jogszabályváltozás jelent meg a Magyar Közlönyben.\n"
         f"\n"
-        f"Részletek a mellékelt fájlban: {report_path.name}\n"
+        f"{attach_line}\n"
         f"\n"
         f"--\n"
         f"Automatikusan generálva · gpjarmu-riport\n"

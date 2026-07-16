@@ -123,8 +123,18 @@ class Settings(BaseSettings):
     smtp_attachment: bool = Field(
         default=True,
         description=(
-            "If true, the .txt report is also attached to the email as a file. "
+            "If true, the .txt report is attached to the email as a file. "
             "If false, the report body is the email body itself (plain text)."
+        ),
+    )
+    smtp_html_attachment: bool = Field(
+        default=True,
+        description=(
+            "If true (and smtp_attachment is also true), the HTML version of "
+            "the report is generated on-the-fly and attached as a second file. "
+            "Recipients get both .txt and .html in the same email; Outlook, "
+            "Gmail, and Apple Mail render the .html with clickable links and "
+            "badges, while any text-only client can fall back to the .txt."
         ),
     )
 
