@@ -66,7 +66,11 @@ def build_report_email(
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = settings.email_from
-    msg["To"] = settings.email_to
+    # email.utils.getaddresses() inside smtplib.send_message() handles a
+    # comma-separated recipient list, so we set the header verbatim via
+    # add_header(), bypassing __setitem__'s parseaddr() (which only expects
+    # a single address and would mangle "a@x.hu,b@y.hu").
+    msg.add_header("To", settings.email_to)
     msg["Date"] = format_datetime(datetime.now(timezone.utc))
 
     if settings.smtp_attachment and report_path is not None:

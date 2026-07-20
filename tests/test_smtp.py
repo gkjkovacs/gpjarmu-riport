@@ -280,3 +280,37 @@ def test_build_report_email_handles_zero_items(tmp_path: Path) -> None:
         settings=s,
     )
     assert "0 új változás" in msg["Subject"]
+
+
+def test_build_report_email_supports_comma_separated_recipients(tmp_path: Path) -> None:
+    """email_to='a@x.hu,b@y.hu' → To header keeps both addresses verbatim.
+
+    smtplib.send_message() uses email.utils.getaddresses() on the To header,
+    which splits the comma-separated list into individual recipients, so the
+    header itself is stored as a single string with the comma preserved.
+    """
+    s = _smtp_settings(
+        email_to="gergely.kovacs@jafholz.hu,peter.szekely@jafholz.hu",
+    )
+    report_path = tmp_path / "gpjarmu-2026-07-20.txt"
+    msg = build_report_email(
+        report_text="report",
+        run_date="2026-07-20",
+        lookback_start="2026-06-20",
+        lookback_end="2026-07-20",
+        issues_scanned=10,
+        new_items_count=2,
+        grouped_issues=_sample_grouped_issues(),
+        report_path=report_path,
+        settings=s,
+    )
+    # To header keeps the comma-separated form (with a single space after
+    # the comma — added by email.message.add_header for readability)
+    assert msg["To"] == "gergely.kovacs@jafholz.hu, peter.szekely@jafholz.hu"
+    # getaddresses() (what smtplib uses) splits cleanly into 2 addresses
+    from email.utils import getaddresses
+    addrs = [a for _, a in getaddresses([msg["To"]])]
+    assert addrs == [
+        "gergely.kovacs@jafholz.hu",
+        "peter.szekely@jafholz.hu",
+    ]
