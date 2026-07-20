@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from gpjarmu_riport.state.db import ReportedItem, StateDB
+from hr_kozlony.state.db import ReportedItem, StateDB
 
 
 @pytest.fixture

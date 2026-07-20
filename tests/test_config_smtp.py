@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from gpjarmu_riport.config import LLMProvider, Settings
+from hr_kozlony.config import LLMProvider, Settings
 
 
 # The user's .env file may set SMTP_HOST to something other than the default
@@ -14,7 +14,7 @@ from gpjarmu_riport.config import LLMProvider, Settings
 def _isolated_settings_env(tmp_path, monkeypatch):
     fake_env = tmp_path / ".env"
     fake_env.write_text("", encoding="utf-8")
-    from gpjarmu_riport.config import Settings
+    from hr_kozlony.config import Settings
     original_env_file = Settings.model_config.get("env_file")
     Settings.model_config["env_file"] = str(fake_env)
     for k in (
@@ -24,7 +24,7 @@ def _isolated_settings_env(tmp_path, monkeypatch):
     ):
         monkeypatch.delenv(k, raising=False)
     # Clear the cached settings so the new env_file is picked up
-    from gpjarmu_riport import config
+    from hr_kozlony import config
     config._cached_settings = None
     yield
     Settings.model_config["env_file"] = original_env_file

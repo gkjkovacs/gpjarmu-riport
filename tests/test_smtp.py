@@ -14,9 +14,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from gpjarmu_riport.config import LLMProvider, Settings
-from gpjarmu_riport.email.mailer import build_report_email
-from gpjarmu_riport.email.smtp import send_email
+from hr_kozlony.config import LLMProvider, Settings
+from hr_kozlony.email.mailer import build_report_email
+from hr_kozlony.email.smtp import send_email
 
 
 # --- settings fixtures -----------------------------------------------------
@@ -92,7 +92,7 @@ def test_send_email_raises_on_unknown_security() -> None:
 def test_send_email_starttls_uses_smtp_class() -> None:
     s = _smtp_settings(smtp_security="starttls", smtp_port=587)
     server = _mock_smtp_server()
-    with patch("gpjarmu_riport.email.smtp.smtplib.SMTP", return_value=server) as smtp_cls:
+    with patch("hr_kozlony.email.smtp.smtplib.SMTP", return_value=server) as smtp_cls:
         send_email(_sample_msg(), s)
     # STARTTLS path uses smtplib.SMTP (not SMTP_SSL)
     smtp_cls.assert_called_once_with("smtp.freemail.hu", 587, timeout=30)
@@ -110,7 +110,7 @@ def test_send_email_starttls_uses_smtp_class() -> None:
 def test_send_email_ssl_uses_smtp_ssl_class() -> None:
     s = _smtp_settings(smtp_security="ssl", smtp_port=465)
     server = _mock_smtp_server()
-    with patch("gpjarmu_riport.email.smtp.smtplib.SMTP_SSL", return_value=server) as smtp_cls:
+    with patch("hr_kozlony.email.smtp.smtplib.SMTP_SSL", return_value=server) as smtp_cls:
         send_email(_sample_msg(), s)
     smtp_cls.assert_called_once()
     args, kwargs = smtp_cls.call_args
@@ -130,7 +130,7 @@ def test_send_email_ssl_uses_smtp_ssl_class() -> None:
 def test_send_email_plain_skips_starttls(caplog) -> None:
     s = _smtp_settings(smtp_security="none", smtp_port=25)
     server = _mock_smtp_server()
-    with patch("gpjarmu_riport.email.smtp.smtplib.SMTP", return_value=server):
+    with patch("hr_kozlony.email.smtp.smtplib.SMTP", return_value=server):
         send_email(_sample_msg(), s)
     server.starttls.assert_not_called()
     server.login.assert_called_once()
@@ -143,7 +143,7 @@ def test_send_email_propagates_smtp_auth_error() -> None:
     s = _smtp_settings()
     server = _mock_smtp_server()
     server.login.side_effect = smtplib.SMTPAuthenticationError(535, b"auth failed")
-    with patch("gpjarmu_riport.email.smtp.smtplib.SMTP", return_value=server):
+    with patch("hr_kozlony.email.smtp.smtplib.SMTP", return_value=server):
         with pytest.raises(smtplib.SMTPAuthenticationError):
             send_email(_sample_msg(), s)
 
@@ -158,12 +158,12 @@ def _sample_grouped_issues() -> list[dict]:
         "url": "https://magyarkozlony.hu/dokumentumok/abc/megtekintes",
         "items": [{
             "anchor": "12. § (3)",
-            "one_line_summary_hu": "A cégautóadó mértéke 2026. január 1-jétől emelkedik.",
+            "one_line_summary_hu": "A 25 év alatti munkavállalók SZJA-mentessége 2026. január 1-jétől kiterjed.",
             "score": 0.82,
-            "matched_topics": ["cégautóadó"],
-            "expansion_hu": "A bekezdés a cégautóadóról szóló törvény 3. §-át módosítja.",
+            "matched_topics": ["bér", "szja"],
+            "expansion_hu": "A bekezdés az Szja tv. 29/A. §-át módosítja a munkavállalói jövedelmekre.",
             "key_dates_hu": ["2026. január 1."],
-            "action_items_hu": ["Frissíteni a havi költségvetési tervet."],
+            "action_items_hu": ["HR vezetőknek: felülvizsgálni a 25 év alatti munkavállalók bérszámfejtését."],
             "indokolas_url": None,
         }],
     }]
@@ -172,7 +172,7 @@ def _sample_grouped_issues() -> list[dict]:
 def test_build_report_email_with_dual_attachment(tmp_path: Path) -> None:
     """Default mode: cover + .txt + .html both attached."""
     s = _smtp_settings()  # smtp_attachment=True, smtp_html_attachment=True
-    report_path = tmp_path / "gpjarmu-2026-07-02.txt"
+    report_path = tmp_path / "hr-kozlony-2026-07-02.txt"
     msg = build_report_email(
         report_text="Full report text\n" * 50,
         run_date="2026-07-02",
@@ -185,24 +185,24 @@ def test_build_report_email_with_dual_attachment(tmp_path: Path) -> None:
         settings=s,
     )
     # Subject
-    assert "[Céges Gépjármű riport]" in msg["Subject"]
+    assert "[HR riport]" in msg["Subject"]
     assert "3 új változás" in msg["Subject"]
     # Multipart (cover + 2 attachments)
     assert msg.is_multipart()
     parts = list(msg.walk())
     filenames = [p.get_filename() for p in parts if p.get_filename()]
-    assert "gpjarmu-2026-07-02.txt" in filenames
-    assert "gpjarmu-2026-07-02.html" in filenames
+    assert "hr-kozlony-2026-07-02.txt" in filenames
+    assert "hr-kozlony-2026-07-02.html" in filenames
     # .txt attachment contains the report
-    txt_part = next(p for p in parts if p.get_filename() == "gpjarmu-2026-07-02.txt")
+    txt_part = next(p for p in parts if p.get_filename() == "hr-kozlony-2026-07-02.txt")
     assert b"Full report text" in txt_part.get_payload(decode=True)
     assert txt_part.get_content_type() == "text/plain"
     # .html attachment is valid HTML and contains the report content
-    html_part = next(p for p in parts if p.get_filename() == "gpjarmu-2026-07-02.html")
+    html_part = next(p for p in parts if p.get_filename() == "hr-kozlony-2026-07-02.html")
     assert html_part.get_content_type() == "text/html"
     html_payload = html_part.get_payload(decode=True).decode("utf-8")
     assert "<!doctype html>" in html_payload.lower()
-    assert "Céges Gépjármű" in html_payload
+    assert "HR Középvállalati" in html_payload
     assert "Ezen a linken éred el ezt a közlönyt" in html_payload
     assert "magyarkozlony.hu/dokumentumok/abc/megtekintes" in html_payload
     # Cover body advertises both attachments
@@ -219,7 +219,7 @@ def test_build_report_email_with_dual_attachment(tmp_path: Path) -> None:
 def test_build_report_email_txt_only_attachment(tmp_path: Path) -> None:
     """smtp_html_attachment=False → only .txt, no .html."""
     s = _smtp_settings(smtp_html_attachment=False)
-    report_path = tmp_path / "gpjarmu-2026-07-02.txt"
+    report_path = tmp_path / "hr-kozlony-2026-07-02.txt"
     msg = build_report_email(
         report_text="Full report text\n" * 50,
         run_date="2026-07-02",
@@ -233,8 +233,8 @@ def test_build_report_email_txt_only_attachment(tmp_path: Path) -> None:
     )
     parts = list(msg.walk())
     filenames = [p.get_filename() for p in parts if p.get_filename()]
-    assert "gpjarmu-2026-07-02.txt" in filenames
-    assert "gpjarmu-2026-07-02.html" not in filenames
+    assert "hr-kozlony-2026-07-02.txt" in filenames
+    assert "hr-kozlony-2026-07-02.html" not in filenames
     # Cover mentions only the .txt
     body = next(
         p.get_payload(decode=True).decode("utf-8")
@@ -247,7 +247,7 @@ def test_build_report_email_txt_only_attachment(tmp_path: Path) -> None:
 
 def test_build_report_email_body_only(tmp_path: Path) -> None:
     s = _smtp_settings(smtp_attachment=False)
-    report_path = tmp_path / "gpjarmu-2026-07-02.txt"
+    report_path = tmp_path / "hr-kozlony-2026-07-02.txt"
     msg = build_report_email(
         report_text="Just the body, no attachment.",
         run_date="2026-07-02",
@@ -267,7 +267,7 @@ def test_build_report_email_body_only(tmp_path: Path) -> None:
 
 def test_build_report_email_handles_zero_items(tmp_path: Path) -> None:
     s = _smtp_settings()
-    report_path = tmp_path / "gpjarmu-2026-07-02.txt"
+    report_path = tmp_path / "hr-kozlony-2026-07-02.txt"
     msg = build_report_email(
         report_text="(empty report)",
         run_date="2026-07-02",
@@ -292,7 +292,7 @@ def test_build_report_email_supports_comma_separated_recipients(tmp_path: Path) 
     s = _smtp_settings(
         email_to="gergely.kovacs@jafholz.hu,peter.szekely@jafholz.hu",
     )
-    report_path = tmp_path / "gpjarmu-2026-07-20.txt"
+    report_path = tmp_path / "hr-kozlony-2026-07-20.txt"
     msg = build_report_email(
         report_text="report",
         run_date="2026-07-20",

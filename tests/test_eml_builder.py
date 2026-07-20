@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gpjarmu_riport.config import LLMProvider, Settings
-from gpjarmu_riport.email import build_text_report, render_and_save_report
+from hr_kozlony.config import LLMProvider, Settings
+from hr_kozlony.email import build_text_report, render_and_save_report
 
 
 def _settings() -> Settings:
@@ -14,7 +14,7 @@ def _settings() -> Settings:
         email_from="test@localhost",
         email_to="user@localhost",
         email_subject_prefix="[Test riport]",
-        output_dir=Path("/tmp/gpjarmu-test"),
+        output_dir=Path("/tmp/hr-kozlony-test"),
     )
 
 
@@ -25,15 +25,16 @@ def _sample_grouped_issues() -> list[dict]:
         "url": "https://magyarkozlony.hu/dokumentumok/abc123/megtekintes",
         "items": [{
             "anchor": "12. § (3)",
-            "one_line_summary_hu": "A cégautóadó mértéke 2026. január 1-jétől emelkedik.",
+            "one_line_summary_hu": "A 25 év alatti munkavállalók SZJA-mentessége 2026. január 1-jétől kiterjed.",
             "score": 0.82,
-            "matched_topics": ["cégautóadó"],
+            "matched_topics": ["bér", "szja"],
             "expansion_hu": (
-                "A bekezdés a cégautóadóról szóló törvény 3. §-át módosítja: "
-                "a havi fix adó 18 000 Ft-ról 19 500 Ft-ra emelkedik."
+                "A bekezdés az Szja tv. 29/A. §-át módosítja: a 25 év alatti munkavállalók "
+                "SZJA-mentessége a havi 499 952 Ft-os határ helyett 5,5 millió Ft-os "
+                "jövedelemhatárig terjed 2026. január 1-jétől."
             ),
             "key_dates_hu": ["2026. január 1."],
-            "action_items_hu": ["Frissíteni a havi költségvetési tervet."],
+            "action_items_hu": ["HR vezetőknek: felülvizsgálni a 25 év alatti munkavállalók bérszámfejtését."],
             "indokolas_url": "https://magyarkozlony.hu/dokumentumok/abc/indokolas",
         }],
     }]
@@ -50,26 +51,26 @@ def test_build_text_report_includes_summary_and_expansion() -> None:
         settings=_settings(),
     )
     # Header
-    assert "Céges Gépjármű Havi Riport" in body
+    assert "HR Középvállalati Havi Riport" in body
     assert "Futtatás dátuma: 2026-07-02" in body
     assert "Új változások: 1" in body
     # Anchor + one-line summary
     assert "§ 12. § (3)" in body
-    assert "A cégautóadó mértéke 2026. január 1-jétől emelkedik." in body
+    assert "A 25 év alatti munkavállalók SZJA-mentessége" in body
     # Expansion
-    assert "a havi fix adó 18 000 Ft-ról 19 500 Ft-ra emelkedik." in body
+    assert "az Szja tv. 29/A. §-át módosítja" in body
     # Key dates
     assert "Határidők: 2026. január 1." in body
     # Action items (with bullet)
     assert "  Teendők:" in body
-    assert "    - Frissíteni a havi költségvetési tervet." in body
+    assert "    - HR vezetőknek:" in body
     # Indokolás URL
     assert "https://magyarkozlony.hu/dokumentumok/abc/indokolas" in body
     # Per-issue link (Közlöny URL)
     assert "Ezen a linken éred el ezt a közlönyt" in body
     assert "https://magyarkozlony.hu/dokumentumok/abc123/megtekintes" in body
     # Footer
-    assert "Gépjármű / Céges Gépjármű" in body
+    assert "HR középvállalati" in body
 
 
 def test_build_text_report_includes_issue_link() -> None:
@@ -132,7 +133,7 @@ def test_build_text_report_separates_topics_with_comma() -> None:
                 "anchor": "1. §",
                 "one_line_summary_hu": "x",
                 "score": 0.6,
-                "matched_topics": ["cégautóadó", "áfa", "flottakezelés"],
+                "matched_topics": ["bér", "szja", "cafeteria"],
                 "expansion_hu": "y",
                 "key_dates_hu": [],
                 "action_items_hu": [],
@@ -141,7 +142,7 @@ def test_build_text_report_separates_topics_with_comma() -> None:
         }],
         settings=_settings(),
     )
-    assert "Témák: cégautóadó, áfa, flottakezelés" in body
+    assert "Témák: bér, szja, cafeteria" in body
 
 
 def test_build_text_report_empty() -> None:
@@ -156,6 +157,7 @@ def test_build_text_report_empty() -> None:
     )
     assert "Új változások: 0" in body
     assert "nem találtam új" in body
+    assert "HR területét" in body  # HR-specific copy
 
 
 def test_render_and_save_report_writes_txt(tmp_path: Path) -> None:
@@ -175,8 +177,8 @@ def test_render_and_save_report_writes_txt(tmp_path: Path) -> None:
     assert out.suffix == ".txt"
     # Verify it's a plain UTF-8 text file
     text = out.read_text(encoding="utf-8")
-    assert "Céges Gépjármű Havi Riport" in text
-    assert "a havi fix adó 18 000 Ft-ról 19 500 Ft-ra emelkedik." in text
+    assert "HR Középvállalati Havi Riport" in text
+    assert "az Szja tv. 29/A. §-át módosítja" in text
     # No MIME headers should be present
     assert "Content-Type:" not in text
     assert "MIME-Version:" not in text

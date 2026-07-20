@@ -92,8 +92,8 @@ def _build_text_body(
     lines: list[str] = []
     sep = "=" * 72
 
-    lines.append("Céges Gépjármű Havi Riport")
-    lines.append(f"Céges Gépjármű — Magyar Közlöny Havi Riport — {run_date}")
+    lines.append("HR Középvállalati Havi Riport")
+    lines.append(f"HR Középvállalati — Magyar Közlöny Havi Riport — {run_date}")
     lines.append("")
     lines.append(
         f"Futtatás dátuma: {run_date}\n"
@@ -105,8 +105,8 @@ def _build_text_body(
 
     if new_items_count == 0:
         lines.append(
-            "Ebben a futásban nem találtam új, a céges gépjármű-témakört "
-            "érintő bekezdést a Magyar Közlönyben."
+            "Ebben a futásban nem találtam új, a HR területét (munkajog, bér, "
+            "juttatás, foglalkoztatás, munkavédelem) érintő bekezdést a Magyar Közlönyben."
         )
         lines.append(f"A figyelt időablak: {lookback_start} - {lookback_end}.")
     else:
@@ -149,7 +149,7 @@ def _build_text_body(
     lines.append(
         "Automatikusan generálva · Forrás: https://magyarkozlony.hu · "
         f"Szűrési küszöb: relevancia >= {relevance_threshold:.2f} (tág) · "
-        "Témakör: Gépjármű / Céges Gépjármű"
+        "Témakör: HR középvállalati (~200 fő)"
     )
     lines.append("")
     lines.append(f"Generálva: {datetime.now(timezone.utc).isoformat()}")
@@ -236,7 +236,7 @@ def render_and_save_report(
         grouped_issues=grouped_issues,
         settings=settings,
     )
-    return save_text_report(text, output_dir / f"gpjarmu-{run_date}.txt")
+    return save_text_report(text, output_dir / f"hr-kozlony-{run_date}.txt")
 
 
 __all__ = [

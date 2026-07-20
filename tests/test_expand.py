@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from gpjarmu_riport.graph.nodes.expand import (
+from hr_kozlony.graph.nodes.expand import (
     _coerce_expander_result,
     _expand_one,
     _extract_json,
@@ -35,8 +35,8 @@ def test_safe_parse_json_returns_none_for_broken_quote() -> None:
     # The exact failure mode from the live run: ASCII " inside a Hungarian quoted
     # title terminates the JSON string early, then a literal newline follows.
     raw = (
-        '{"expansion_hu": "Kormányhatározat a közösségi közlekedés versenyképességéről\n'
-        'és az országos közlekedésszervező, valamint gördülőállo", "key_dates_hu": [], '
+        '{"expansion_hu": "A munkaviszony létesítésének feltételei\n'
+        'és a munkavállalói jogok gyakorlása, valamint a munk", "key_dates_hu": [], '
         '"action_items_hu": []}'
     )
     assert _safe_parse_json(raw) is None
@@ -68,10 +68,10 @@ def test_coerce_expander_result_normalises_wrong_types() -> None:
 async def test_expand_one_succeeds_on_clean_json() -> None:
     llm = MagicMock()
     llm.ainvoke = _async_iter([
-        '{"expansion_hu": "A bekezdés a cégautóadót módosítja.", "key_dates_hu": ["2026.01.01."], "action_items_hu": ["x"]}'
+        '{"expansion_hu": "A bekezdés a 25 év alattiak SZJA-mentességét módosítja.", "key_dates_hu": ["2026.01.01."], "action_items_hu": ["x"]}'
     ])
     item = {
-        "anchor": "12. §", "score": 0.7, "matched_topics": ["cégautóadó"],
+        "anchor": "12. §", "score": 0.7, "matched_topics": ["bér", "szja"],
         "one_line_summary_hu": "rövid", "text": "...", "indokolas_text": "",
         "indokolas_url": None,
     }
@@ -87,19 +87,19 @@ async def test_expand_one_repairs_malformed_json() -> None:
     # second call (repair) returns valid JSON.
     llm = MagicMock()
     bad = (
-        '{"expansion_hu": "Kormányhatározat a közlekedésről\nés a "gördülőállomány" fejlesztéséről.", '
+        '{"expansion_hu": "A Munka törvénykönyve módosítása\nés a "munkavállalói" jogok változásáról.", '
         '"key_dates_hu": [], "action_items_hu": []}'
     )
-    good = '{"expansion_hu": "A kormányhatározat a közlekedésről szól.", "key_dates_hu": [], "action_items_hu": []}'
+    good = '{"expansion_hu": "A Munka törvénykönyve módosítása a munkavállalói jogokról szól.", "key_dates_hu": [], "action_items_hu": []}'
     llm.ainvoke = _async_iter([bad, good])
     item = {
-        "anchor": "5. §", "score": 0.6, "matched_topics": ["közlekedés"],
+        "anchor": "5. §", "score": 0.6, "matched_topics": ["munkajog"],
         "one_line_summary_hu": "FB", "text": "...", "indokolas_text": "",
         "indokolas_url": None,
     }
     out = await _expand_one(llm, item)
     assert "error" not in out
-    assert out["expansion_hu"] == "A kormányhatározat a közlekedésről szól."
+    assert out["expansion_hu"] == "A Munka törvénykönyve módosítása a munkavállalói jogokról szól."
 
 
 @pytest.mark.asyncio

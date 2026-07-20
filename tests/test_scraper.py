@@ -8,8 +8,8 @@ from __future__ import annotations
 import pytest
 import responses
 
-from gpjarmu_riport.config import LLMProvider, Settings
-from gpjarmu_riport.scraper.magyarkozlony import (
+from hr_kozlony.config import LLMProvider, Settings
+from hr_kozlony.scraper.magyarkozlony import (
     Bekezdes,
     MagyarKozlonyClient,
     content_hash,
@@ -110,7 +110,7 @@ def test_fetch_issue_content_parses_bekezdesek() -> None:
         status=200,
     )
     client = MagyarKozlonyClient(s)
-    from gpjarmu_riport.scraper.magyarkozlony import IssueMeta
+    from hr_kozlony.scraper.magyarkozlony import IssueMeta
     meta = IssueMeta(
         number="2026. évi 83. szám",
         issue_id="2026/83",
@@ -144,7 +144,7 @@ def test_min_bekezdes_length_filter() -> None:
         status=200,
     )
     client = MagyarKozlonyClient(s)
-    from gpjarmu_riport.scraper.magyarkozlony import IssueMeta
+    from hr_kozlony.scraper.magyarkozlony import IssueMeta
     meta = IssueMeta(
         number="2026. évi 83. szám", issue_id="2026/83", date="2026-07-01",
         has_indokolas=False,

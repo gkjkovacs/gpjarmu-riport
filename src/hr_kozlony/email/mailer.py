@@ -139,15 +139,16 @@ def _build_cover(
         attach_line = f"Részletek a mellékelt fájlban: {report_path.name}"
 
     return (
-        f"Céges Gépjármű Havi Riport — {run_date}\n"
+        f"HR Középvállalati Havi Riport — {run_date}\n"
         f"\n"
-        f"Ebben a hónapban {new_items_count} új, a céges gépjárműveket "
-        f"érintő jogszabályváltozás jelent meg a Magyar Közlönyben.\n"
+        f"Ebben a hónapban {new_items_count} új, a HR területét (munkajog, "
+        f"bér, juttatás, foglalkoztatás, munkavédelem) érintő jogszabályváltozás "
+        f"jelent meg a Magyar Közlönyben.\n"
         f"\n"
         f"{attach_line}\n"
         f"\n"
         f"--\n"
-        f"Automatikusan generálva · gpjarmu-riport\n"
+        f"Automatikusan generálva · hr-kozlony\n"
     )
 
 

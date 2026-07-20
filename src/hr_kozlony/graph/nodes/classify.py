@@ -2,7 +2,7 @@
 Graph node: classify
 
 For every bekezdés across all fetched issues, ask the LLM to score
-relevance (0.00–1.00) against the "Gépjármű / Céges Gépjármű" taxonomy.
+relevance (0.00–1.00) against the "HR középvállalati (~200 fő)" taxonomy.
 Keep only bekezdések with score >= RELEVANCE_THRESHOLD.
 
 Performance optimizations:
@@ -37,50 +37,104 @@ _STRICT_SUFFIX = (
     "one_line_summary_hu, reasoning_hu."
 )
 
-# Hungarian (and some German-origin) keywords that *might* be relevant.
+# Hungarian HR-keywords that *might* be relevant for a ~200 fős középvállalat.
 # Hungarian has productive suffixation (-k, -t, -nak/-nek, -ra/-re, -val/-vel,
-# -i, -beli, ...), so each keyword is followed by an optional Hungarian
-# suffix run. We keep the word boundary BEFORE the keyword (so "automatikus"
-# still won't match "autó") and only loosen it AFTER. A few stems use
-# suffixes that are not regular (e.g. "járművek" → "jármű") so those are
-# listed explicitly with `(?:vek|vet|vön|vét|vek)?`.
+# -i, -beli, -ás/-és, ...), so each keyword is followed by an optional
+# Hungarian-suffix run [a-záéíóöőúüű]*. We keep the word boundary BEFORE
+# the keyword (so "automatikus" still won't match "munka") and only loosen
+# it AFTER. We use a small set of stems and let suffixation cover the rest.
 _KEYWORD_PATTERN = re.compile(
     r"\b("
-    # jármű family — irregular plurals
-    r"gépjármű[veköűei]+|gépjárművek?|jármű[veköűei]+|járművek?|jármű|"
-    r"gépkocsi[ké]+|gépkocsik?|"
-    # autó family
-    r"autó[ké]+|autók|autós[ae]k?|személygépkocsi[ké]+|szgk(?:-[a-z0-9]+)?|"
-    r"tehergépkocsi[ké]+|tehergépjármű[veköűei]+|"
-    # cégautó family — covers cégautó, cégautók, cégautókat, cégautónak, cégautóra, etc.
-    r"cégautó[a-záéíóöőúüű]*|céges (gépjármű|autó)[a-záéíóöőúüű]*|"
-    r"cégautóadó[a-záéíóöőúüű]*|cégjármű[a-záéíóöőúüű]*|"
-    # flotta
-    r"flotta[a-záéíóöőúüű]*|flottakezelő[a-záéíóöőúüű]*|"
-    # lízing
-    r"lízing[a-záéíóöőúüű]*|operatív lízing[a-záéíóöőúüű]*|pénzügyi lízing[a-záéíóöőúüű]*|"
-    # biztosítás
-    r"casco[a-záéíóöőúüű]*|kfgb[a-záéíóöőúüű]*|"
-    r"kötelező (gépjármű|biztosítás)[a-záéíóöőúüű]*|kgfb[a-záéíóöőúüű]*|"
-    # útdíj
-    r"útdíj[a-záéíóöőúüű]*|hu-go[a-záéíóöőúüű]*|e-matrica[a-záéíóöőúüű]*|"
-    r"ematricá[a-záéíóöőúüű]*|"
-    # üzemanyag
-    r"üzemanyag[a-záéíóöőúüű]*|üzemanyagköltség[a-záéíóöőúüű]*|"
-    r"kilométerköltség[a-záéíóöőúüű]*|kilométerátalány[a-záéíóöőúüű]*|"
-    # vezető
-    r"gépjárművezető[a-záéíóöőúüű]*|gépjármű-vezető[a-záéíóöőúüű]*|"
-    r"járművezető[a-záéíóöőúüű]*|cégautóvezetői[a-záéíóöőúüű]*|"
-    # menetlevél, tachográf
-    r"menetlevél[a-záéíóöőúüű]*|tachográf[a-záéíóöőúüű]*|"
-    # haszongépjármű
-    r"haszongépjármű[veköűei]*|haszongépjárművek?|"
-    # zéró emissziós, elektromos, hibrid
-    r"zéró emissziós[a-záéíóöőúüű]*|elektromos (jármű|autó)[a-záéíóöőúüű]*|"
-    r"hibrid (jármű|autó)[a-záéíóöőúüű]*|"
-    # egyéb
-    r"hajtású[a-záéíóöőúüű]*|hajtóanyag[a-záéíóöőúüű]*|"
-    r"áfa[a-záéíóöőúüű]*|áfás[a-záéíóöőúüű]*"
+    # --- 1. Munkaviszony, Mt. ---
+    r"munka[a-záéíóöőúüű]*|munkaviszony[a-záéíóöőúüű]*|"
+    r"munkaszerződés[a-záéíóöőúüű]*|munkáltató[a-záéíóöőúüű]*|"
+    r"munkavállaló[a-záéíóöőúüű]*|munkavégzés[a-záéíóöőúüű]*|"
+    r"munkaviszony[a-záéíóöőúüű]*|munkabér[a-záéíóöőúüű]*|"
+    r"próbaidő[a-záéíóöőúüű]*|felmond[a-záéíóöőúüű]*|"
+    r"alkalmazott[a-záéíóöőúüű]*|alkalmaz[a-záéíóöőúüű]*|"
+    r"foglalkoztat[a-záéíóöőúüű]*|foglalkoztató[a-záéíóöőúüű]*|"
+    r"jogviszony[a-záéíóöőúüű]*|"
+    # --- 2. Bér, SZJA, szocho ---
+    r"bér[a-záéíóöőúüű]*|személyi jövedelemadó[a-záéíóöőúüű]*|"
+    r"szja[a-záéíóöőúüű]*|szocho[a-záéíóöőúüű]*|"
+    r"szociális hozzájárulási adó[a-záéíóöőúüű]*|"
+    r"minimálbér[a-záéíóöőúüű]*|garantált bérminimum[a-záéíóöőúüű]*|"
+    r"bérminimum[a-záéíóöőúüű]*|bérköltség[a-záéíóöőúüű]*|"
+    r"bérszámfejtés[a-záéíóöőúüű]*|béren kívüli juttatás[a-záéíóöőúüű]*|"
+    r"bérjövedelem[a-záéíóöőúüű]*|"
+    # --- 3. Cafeteria, SZÉP ---
+    r"cafeteria[a-záéíóöőúüű]*|szép-kártya[a-záéíóöőúüű]*|"
+    r"szépkártya[a-záéíóöőúüű]*|széchenyi pihenő[a-záéíóöőúüű]*|"
+    r"rekreációs keret[a-záéíóöőúüű]*|iskolakezdési támogatás[a-záéíóöőúüű]*|"
+    r"erzsébet[a-záéíóöőúüű]*|önkéntes (pénztár|nyugdíjpénztár)[a-záéíóöőúüű]*|"
+    r"lakáscélú támogatás[a-záéíóöőúüű]*|"
+    # --- 4. Munkaidő ---
+    r"munkaidő[a-záéíóöőúüű]*|munkaidőkeret[a-záéíóöőúüű]*|"
+    r"túlóra[a-záéíóöőúüű]*|túlmunka[a-záéíóöőúüű]*|"
+    r"pihenőidő[a-záéíóöőúüű]*|pihenőnap[a-záéíóöőúüű]*|"
+    r"munkaszüneti nap[a-záéíóöőúüű]*|távmunka[a-záéíóöőúüű]*|"
+    r"home office[a-záéíóöőúüű]*|home-office[a-záéíóöőúüű]*|"
+    r"készenlét[a-záéíóöőúüű]*|éjszakai munka[a-záéíóöőúüű]*|"
+    r"vasárnapi pótlék[a-záéíóöőúüű]*|munkabeosztás[a-záéíóöőúüű]*|"
+    # --- 5. Szabadság ---
+    r"szabadság[a-záéíóöőúüű]*|pótszabadság[a-záéíóöőúüű]*|"
+    r"apaszabadság[a-záéíóöőúüű]*|szülői szabadság[a-záéíóöőúüű]*|"
+    r"szülési szabadság[a-záéíóöőúüű]*|gyermekápolási[a-záéíóöőúüű]*|"
+    r"betegszabadság[a-záéíóöőúüű]*|"
+    # --- 6. Munkavédelem ---
+    r"munkavédel[a-záéíóöőúüű]*|munkabaleset[a-záéíóöőúüű]*|"
+    r"foglalkozás-egészségügy[a-záéíóöőúüű]*|foglalkozásegészségügy[a-záéíóöőúüű]*|"
+    r"védőeszköz[a-záéíóöőúüű]*|kockázatértékelés[a-záéíóöőúüű]*|"
+    r"munkavédelmi (képviselő|szabály)[a-záéíóöőúüű]*|"
+    # --- 7. TB, nyugdíj, egészségbiztosítás ---
+    r"társadalombiztosítás[a-záéíóöőúüű]*|tb-járulék[a-záéíóöőúüű]*|"
+    r"nyugdíjbiztosítás[a-záéíóöőúüű]*|egészségbiztosítás[a-záéíóöőúüű]*|"
+    r"nyugdíj[a-záéíóöőúüű]*|táppénz[a-záéíóöőúüű]*|"
+    r"csecsemőgondozási díj[a-záéíóöőúüű]*|gyermekgondozási díj[a-záéíóöőúüű]*|"
+    r"gyed[a-záéíóöőúüű]*|csed[a-záéíóöőúüű]*|tb járulék[a-záéíóöőúüű]*|"
+    # --- 8. Atipikus foglalkoztatás ---
+    r"megbízás[a-záéíóöőúüű]*|megbízási jogviszony[a-záéíóöőúüű]*|"
+    r"alkalmi munka[a-záéíóöőúüű]*|egyszerűsített foglalkoztatás[a-záéíóöőúüű]*|"
+    r"diákmunka[a-záéíóöőúüű]*|diák-szövetkezet[a-záéíóöőúüű]*|"
+    r"önkéntes (munka|szerződés)[a-záéíóöőúüű]*|"
+    r"4 napos munkahét[a-záéíóöőúüű]*|négy napos munkahét[a-záéíóöőúüű]*|"
+    # --- 9. Foglalkoztatás-támogatás, GINOP ---
+    r"álláskeresési járadék[a-záéíóöőúüű]*|álláskeresési segély[a-záéíóöőúüű]*|"
+    r"képzési támogatás[a-záéíóöőúüű]*|ginop[a-záéíóöőúüű]*|"
+    r"munkaadói járulékkedvezmény[a-záéíóöőúüű]*|"
+    r"munkahelyvédelmi akcióterv[a-záéíóöőúüű]*|"
+    r"rehabilitációs hatóság[a-záéíóöőúüű]*|"
+    r"első munkahely garancia[a-záéíóöőúüű]*|"
+    # --- 10. Külföldi munkavállalók ---
+    r"munkavállalási engedély[a-záéíóöőúüű]*|"
+    r"munkavállalási jogosultság[a-záéíóöőúüű]*|"
+    r"blue card[a-záéíóöőúüű]*|szezonális munkavállal[a-záéíóöőúüű]*|"
+    r"kirendelés[a-záéíóöőúüű]*|külföldi munkavállaló[a-záéíóöőúüű]*|"
+    r"harmadik országbeli[a-záéíóöőúüű]*|tartózkodási engedély[a-záéíóöőúüű]*|"
+    # --- 11. Esélyegyenlőség ---
+    r"esélyegyenlőség[a-záéíóöőúüű]*|egyenlő bánásmód[a-záéíóöőúüű]*|"
+    r"diszkrimináció[a-záéíóöőúüű]*|akadálymentesítés[a-záéíóöőúüű]*|"
+    r"fogyatékossággal élő[a-záéíóöőúüű]*|fogyatékos munkavállaló[a-záéíóöőúüű]*|"
+    r"védett tulajdonság[a-záéíóöőúüű]*|"
+    # --- 12. Rehabilitációs hozzájárulás ---
+    r"rehabilitációs hozzájárulás[a-záéíóöőúüű]*|"
+    r"megváltozott munkaképesség[a-záéíóöőúüű]*|"
+    r"megváltozott munkaképességű[a-záéíóöőúüű]*|"
+    r"akkreditált foglalkoztató[a-záéíóöőúüű]*|"
+    # --- 13. Hatóság, GDPR munkaügyi, visszaélés-bejelentés ---
+    r"munkaügyi (hatóság|ellenőrzés|felügyelőség)[a-záéíóöőúüű]*|"
+    r"gdpr[a-záéíóöőúüű]*|adatkezelés[a-záéíóöőúüű]*|"
+    r"adatvédelmi[a-záéíóöőúüű]*|visszaélés-bejelentés[a-záéíóöőúüű]*|"
+    r"belső visszaélés-bejelentési rendszer[a-záéíóöőúüű]*|"
+    r"whistleblowing[a-záéíóöőúüű]*|"
+    # --- 14. Üzemi tanács, szakszervezet ---
+    r"üzemi tanács[a-záéíóöőúüű]*|szakszervezet[a-záéíóöőúüű]*|"
+    r"kollektív szerződés[a-záéíóöőúüű]*|"
+    r"érdekegyeztetés[a-záéíóöőúüű]*|sztrájk[a-záéíóöőúüű]*|"
+    r"üzemi megbízott[a-záéíóöőúüű]*|"
+    # --- Generic catch-alls (use carefully — they cause false positives if too loose) ---
+    r"munkajog[a-záéíóöőúüű]*|munkajogi[a-záéíóöőúüű]*|"
+    r"hr[a-záéíóöőúüű]*|humánerőforrás[a-záéíóöőúüű]*"
     r")",
     re.IGNORECASE,
 )

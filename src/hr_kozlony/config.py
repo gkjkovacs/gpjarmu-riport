@@ -85,9 +85,9 @@ class Settings(BaseSettings):
 
     # ---- Output ----
     output_dir: Path = Field(default=Path("./output"))
-    email_from: str = Field(default="gpjarmu-riport@localhost")
+    email_from: str = Field(default="hr-kozlony@localhost")
     email_to: str = Field(default="you@example.com")
-    email_subject_prefix: str = Field(default="[Céges Gépjármű riport]")
+    email_subject_prefix: str = Field(default="[HR riport]")
 
     # ---- SMTP (optional) ----
     smtp_enabled: bool = Field(default=False)

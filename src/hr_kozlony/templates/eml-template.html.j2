@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Céges Gépjármű Havi Riport — {{ run_date }}</title>
+  <title>HR Középvállalati Havi Riport — {{ run_date }}</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 760px; margin: 24px auto; padding: 0 16px; color: #1a1a1a; line-height: 1.55; background: #ffffff;">
 
-<h1 style="font-size: 22px; color: #0b3d91; border-bottom: 3px solid #0b3d91; padding-bottom: 6px; margin: 0 0 4px 0;">Céges Gépjármű — Magyar Közlöny Havi Riport</h1>
+<h1 style="font-size: 22px; color: #0b3d91; border-bottom: 3px solid #0b3d91; padding-bottom: 6px; margin: 0 0 4px 0;">HR Középvállalati — Magyar Közlöny Havi Riport</h1>
 <div style="color: #555; font-size: 13px; margin: 0 0 24px 0;">
   Futtatás dátuma: <strong style="color: #1a1a1a;">{{ run_date }}</strong> &middot;
   Lookback: <strong style="color: #1a1a1a;">{{ lookback_start }} &rarr; {{ lookback_end }}</strong> &middot;
@@ -17,7 +17,7 @@
 
 {% if new_items_count == 0 %}
   <div style="background: #fff7e6; border: 1px solid #f5d28a; border-radius: 6px; padding: 14px 16px; color: #6a4a00; margin: 12px 0;">
-    Ebben a futásban nem találtam új, a céges gépjármű-témakört érintő bekezdést a Magyar Közlönyben.
+    Ebben a futásban nem találtam új, a HR területét (munkajog, bér, juttatás, foglalkoztatás, munkavédelem) érintő bekezdést a Magyar Közlönyben.
     A figyelt időablak: {{ lookback_start }} &ndash; {{ lookback_end }}.
   </div>
 {% else %}
@@ -56,7 +56,7 @@
 <div style="margin-top: 36px; padding-top: 12px; border-top: 1px solid #e3e8f0; font-size: 11px; color: #888;">
   Automatikusan generálva &middot; Forrás: <a style="color: #0b3d91;" href="https://magyarkozlony.hu">magyarkozlony.hu</a> &middot;
   Szűrési küszöb: relevancia &ge; {{ "%.2f"|format(relevance_threshold) }} (tág) &middot;
-  Témakör: Gépjármű / Céges Gépjármű
+  Témakör: HR középvállalati (~200 fő)
 </div>
 
 </body>
