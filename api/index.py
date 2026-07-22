@@ -196,6 +196,12 @@ def runs_sync(req: RunRequestSync) -> RunResultSync:
     os.environ["RELEVANCE_THRESHOLD"] = str(req.relevance_threshold)
     if req.dry_run:
         os.environ["DRY_RUN"] = "true"
+    # Fallback: the v3 Settings class reads LLM_API_KEY, but Vercel env vars
+    # are often set as OLLAMA_API_KEY (matches the variable name in the SaaS).
+    # If LLM_API_KEY is empty but OLLAMA_API_KEY is set, copy the value across
+    # so the pipeline can authenticate with the LLM provider.
+    if not os.environ.get("LLM_API_KEY") and os.environ.get("OLLAMA_API_KEY"):
+        os.environ["LLM_API_KEY"] = os.environ["OLLAMA_API_KEY"]
     started_at = datetime.now(timezone.utc).isoformat()
     reload_settings()  # drop memoized Settings so the new env values are loaded
     settings = get_settings()
