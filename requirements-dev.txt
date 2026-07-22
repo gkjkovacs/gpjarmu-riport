@@ -1,0 +1,50 @@
+# =============================================================================
+# Céges Gépjármű Magyar Közlöny Havi Riport — Python dependencies
+# =============================================================================
+# Tested on Python 3.11+ (3.12 recommended). Windows / macOS / Linux compatible.
+# =============================================================================
+
+# --- Core runtime ---
+pydantic>=2.7,<3.0
+pydantic-settings>=2.3,<3.0
+python-dotenv>=1.0,<2.0
+
+# --- LangGraph / LangChain (the orchestration framework) ---
+langgraph>=0.2,<0.3
+langchain>=0.3,<0.4
+langchain-core>=0.3,<0.4
+langchain-openai>=0.2,<0.3
+# For other providers, install on demand:
+#   langchain-anthropic    (for Claude)
+#   langchain-ollama       (for local Ollama)
+
+# --- HTTP / scraping ---
+requests>=2.32,<3.0
+beautifulsoup4>=4.12,<5.0
+lxml>=5.0,<6.0
+pdfplumber>=0.11,<1.0
+
+# --- Templating ---
+jinja2>=3.1,<4.0
+
+# --- Email ---
+# --- Email (SMTP) ---
+# No external deps — smtplib, email.message, and ssl are all in the stdlib.
+# The SMTP transport is in src/gpjarmu_riport/email/smtp.py and is wired into
+# the render_email node when settings.smtp_enabled is True. Default target
+# is freemail.hu:587 (STARTTLS), but host/port/security are all configurable.
+
+# --- CLI / output ---
+rich>=13.7,<14.0
+typer>=0.12,<1.0
+
+# --- Testing ---
+pytest>=8.2,<9.0
+pytest-asyncio>=0.23,<1.0
+pytest-mock>=3.14,<4.0
+respx>=0.21,<1.0        # Mock httpx / async clients in tests
+responses>=0.25,<1.0     # Mock `requests` HTTP calls in tests
+
+# --- Type checking / linting (dev only — not needed for runtime) ---
+# mypy>=1.10,<2.0
+# ruff>=0.5,<1.0
