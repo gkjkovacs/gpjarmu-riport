@@ -93,33 +93,32 @@ def _check_bearer(authorization: Optional[str] = Header(default=None)) -> None:
 # --- Import the underlying service ------------------------------------------
 # `hr_kozlony.service:app` provides /health, /scopes, /scopes/{name},
 # POST /scopes, DELETE /scopes/{name}, and POST /run (background).
-# We re-use it as-is, then bolt on a synchronous /run with a richer payload.
+#
+# Lazy import: importing `hr_kozlony.service` pulls in the entire LangGraph
+# + langchain stack (~1700ms cold-start penalty). On Vercel's free tier the
+# cold-start budget is ~10s, so we keep the import here (at module load)
+# but make sure no other heavy module is touched until a request arrives.
 from hr_kozlony.service import ScopeResponse, app as _service_app  # noqa: E402,E501
-
-# Re-mount the existing routes into a fresh parent app so we can extend
-# /run without monkey-patching the v3 service module. This keeps the v3
-# source untouched (the v3 service still works standalone, e.g. for
-# `uvicorn hr_kozlony.service:app`).
-from fastapi import BackgroundTasks  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
-app = FastAPI(
-    title="HR Középvállalati Magyar Közlöny Havi Riport — Vercel Runtime",
-    description=(
-        "Thin Vercel-compatible wrapper around `hr_kozlony.service`. "
-        "Adds bearer-token auth and a synchronous `POST /runs` that returns "
-        "the full pipeline result (report_path, new_items_count, email_sent, "
-        "etc.). Re-exports /health, /scopes, /scopes/{name}, POST /scopes, "
-        "DELETE /scopes/{name} from the v3 service unchanged."
-    ),
-    version="1.0.0",
-)
 
-# Mount the v3 service's routes under this app. FastAPI lets us include
-# another app's router via `app.mount(...)` or by directly copying routes;
-# the cleanest way is to re-include the service's `app.router` so /health,
-# /scopes, etc. become available here too.
-app.router.routes.extend(_service_app.router.routes)
+# IMPORTANT: We do NOT copy routes between FastAPI apps. Naive copying
+# (`app.router.routes.extend(_service_app.router.routes)`) leaves dangling
+# references to the source app's internals (lifespan_context, dependency
+# overrides, exception handlers), which crash the FastAPI dispatcher on
+# Vercel with FUNCTION_INVOCATION_FAILED.
+#
+# Instead, we mutate the v3 service app in-place: we leave its existing
+# routes as-is, except for `POST /run` which we REMOVE (the v3 version is
+# async-dispatch and returns 202 Accepted; the SaaS contract requires a
+# synchronous endpoint at `POST /runs` that returns the full result).
+# Removing the v3 `/run` route cleanly hands the path over to our new
+# `/runs` route without any reference-dangling issues.
+app = _service_app
+app.router.routes = [
+    r for r in app.router.routes
+    if not (getattr(r, "methods", None) and "POST" in r.methods and getattr(r, "path", None) == "/run")
+]
 
 
 # --- /runs (synchronous, full-result) ----------------------------------------
