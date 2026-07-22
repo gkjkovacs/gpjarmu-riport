@@ -13,12 +13,6 @@
 fastapi>=0.115,<1.0
 pydantic>=2.7,<3.0
 
-# --- ASGI → WSGI/handler adapter for Vercel serverless functions ---
-# The Vercel @vercel/python builder serves Python functions as AWS-Lambda-style
-# handlers. FastAPI is ASGI, so we need Mangum to bridge it. Without Mangum
-# the function crashes with FUNCTION_INVOCATION_FAILED on the first request.
-mangum>=0.19,<1.0
-
 # --- Vercel Python runtime: ASGI server is provided by Vercel ---
 # uvicorn is not needed on Vercel (the platform serves the app via its own
 # ASGI loader). For local dev (`uvicorn api.index:app`), install uvicorn

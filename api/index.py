@@ -271,18 +271,4 @@ def scopes_create_alias() -> dict[str, str]:
     )
 
 
-# --- Vercel serverless entry point -----------------------------------------
-# The Vercel @vercel/python builder invokes the `handler` symbol on each
-# request. FastAPI is ASGI, but Vercel expects an AWS-Lambda-style handler
-# (synchronous `(event, context)` callable). Mangum bridges the two:
-# it takes the ASGI `app` and exposes a `handler(event, context)` that
-# Vercel can call.
-#
-# `lifespan="off"` disables Mangum's lifespan-event emulation — we don't use
-# startup/shutdown hooks, so this avoids extra latency on cold starts.
-from mangum import Mangum  # noqa: E402
-
-handler = Mangum(app, lifespan="off")
-
-
-__all__ = ["app", "handler"]
+__all__ = ["app"]
