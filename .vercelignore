@@ -14,6 +14,10 @@ dist/
 .mypy_cache/
 .ruff_cache/
 
+# --- uv lock file (forces Vercel to use requirements.txt instead) ---
+uv.lock
+
+
 # --- Local dev data (state DB, outputs, logs) ---
 data/
 output/

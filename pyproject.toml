@@ -26,7 +26,10 @@ classifiers = [
 ]
 
 dependencies = [
+    # --- Web server (FastAPI runtime for the Vercel wrapper) ---
+    "fastapi>=0.115,<1.0",
     "pydantic>=2.7,<3.0",
+    # --- Existing v3 dependencies (unchanged) ---
     "pydantic-settings>=2.3,<3.0",
     "python-dotenv>=1.0,<2.0",
     "langgraph>=0.2,<0.3",
