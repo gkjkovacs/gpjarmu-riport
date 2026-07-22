@@ -1,0 +1,33 @@
+# =============================================================================
+# Vercel runtime — minimum required dependencies
+# =============================================================================
+# The Vercel Python build installs ONLY what's in this file. We keep it
+# minimal (no dev/test/lint extras) so the install step stays fast and the
+# deployment package stays small.
+#
+# For local dev, see requirements-dev.txt (installed via `pip install -e .[dev]`).
+# =============================================================================
+
+# --- Web server ---
+fastapi>=0.115,<1.0
+pydantic>=2.7,<3.0
+
+# --- Vercel Python runtime: ASGI server is provided by Vercel ---
+# uvicorn is not needed on Vercel (the platform serves the app via its own
+# ASGI loader). For local dev (`uvicorn api.index:app`), install uvicorn
+# separately: `pip install uvicorn`.
+
+# --- Core runtime (project dependencies, mirrored from pyproject.toml) ---
+pydantic-settings>=2.3,<3.0
+python-dotenv>=1.0,<2.0
+langgraph>=0.2,<0.3
+langchain>=0.3,<0.4
+langchain-core>=0.3,<0.4
+langchain-openai>=0.2,<0.3
+requests>=2.32,<3.0
+beautifulsoup4>=4.12,<5.0
+lxml>=5.0,<6.0
+pdfplumber>=0.11,<1.0
+jinja2>=3.1,<4.0
+rich>=13.7,<14.0
+typer>=0.12,<1.0

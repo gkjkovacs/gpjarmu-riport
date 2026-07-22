@@ -318,3 +318,81 @@ Content-Transfer-Encoding: 7bit
 ```
 
 A teljes HTML body inline CSS-t használ (mail-kliens kompatibilis), és tartalmazza a téma-badge-eket, anchorokat, határidőket, action item-eket és az indokolás linket.
+
+---
+
+## Vercel deployment (SaaS runtime)
+
+A v3 projekt deployolható Vercel-re mint FastAPI runtime, amelyet a [`magyar_kozlony`](https://github.com/gkjkovacs/Magyar-kozlony) SaaS HTTP-n hív. A Vercel-detected entry point: `api/index.py` (FastAPI `app` symbol).
+
+### Endpointok (SaaS contract)
+
+| Method | Path | Auth | Leírás |
+|---|---|---|---|
+| `GET`  | `/health`              | – | Liveness + regisztrált scope-ok száma |
+| `GET`  | `/scopes`              | – | Regisztrált scope nevek listája |
+| `GET`  | `/scopes/{name}`       | – | Egy scope részletes metaadata |
+| `POST` | `/scopes`              | bearer | Új scope modul írása + live-regisztráció (v3 service) |
+| `POST` | `/scopes/create`       | bearer | Alias (501) — használd a `/scopes` POST-ot |
+| `DELETE` | `/scopes/{name}`    | bearer | Scope unregister (fájl marad) |
+| `POST` | `/run`                 | bearer | Async dispatch (202 Accepted) — v3 service |
+| `POST` | `/runs`                | bearer | **Szinkron futtatás**, visszaadja a teljes `RunResult`-ot |
+| `GET`  | `/runs/{run_id}`       | bearer | Stub (nincs perzisztens run state) |
+
+### Auth
+
+A wrapper minden védett endpointra `Authorization: Bearer <RUNTIME_TOKEN>` fejlécet vár. A token a Vercel UI env var-okban (`RUNTIME_TOKEN`) és a SaaS-ban (`RUNTIME_TOKEN`) is azonos érték kell legyen.
+
+### Vercel env var-ok (Production)
+
+| Key | Required | Default | Leírás |
+|---|---|---|---|
+| `RUNTIME_TOKEN`       | ✓ | – | Bearer token (a SaaS küldi) |
+| `OLLAMA_API_KEY`      | ✓ | – | LLM provider API kulcs |
+| `OLLAMA_MODEL`        | – | `minimax-m3:cloud` | Modell név |
+| `OLLAMA_BASE_URL`     | – | `https://ollama.com/v1` | OpenAI-kompatibilis endpoint |
+| `SCOPE`               | – | `konyveles` | Alap scope |
+| `LOOKBACK_DAYS`       | – | `30` | Alap lookback |
+| `RELEVANCE_THRESHOLD` | – | `0.50` | Alap küszöb |
+| `SMTP_ENABLED`        | – | `false` | Ha `true`, a pipeline emailt küld |
+
+### Lokális fejlesztés
+
+```bash
+.venv/bin/uvicorn api.index:app --host 127.0.0.1 --port 5329 --reload
+# Health check:
+curl http://127.0.0.1:5329/health
+# {"status":"ok","scopes_count":3}
+```
+
+A Vercel-en `VERCEL=1` automatikusan be van állítva — a wrapper ilyenkor `/tmp` alá írja a `state.db`-t és az `output_dir`-t (a Vercel projekt fs read-only).
+
+### Vercel UI deploy lépések
+
+1. Push-old a v3-at egy GitHub repoba:
+   ```bash
+   git init -b main
+   git add api/ vercel.json .vercelignore runtime.txt requirements.vercel.txt
+   git commit -m "v3: Vercel FastAPI runtime wrapper"
+   git remote add origin https://github.com/<user>/gpjarmu-riport-v3.git
+   git push -u origin main
+   ```
+2. Vercel UI → **Add New Project** → válaszd a `gpjarmu-riport-v3` repót
+3. **Root Directory**: `.` (a v3 gyökere, nem almappa)
+4. **Framework Preset**: Other
+5. **Build Command**: üres (a `@vercel/python` auto-detect-eli)
+6. A **Settings → Environment Variables**-ban add hozzá a fenti env var-okat
+7. **Deploy** — 1-2 perc a függőségek telepítésére
+8. A kapott URL (`https://gpjarmu-riport-v3-xxx.vercel.app`) menjen a SaaS-ba mint `RUNTIME_URL`
+
+### SaaS-oldali összekötés
+
+A [`magyar_kozlony`](https://github.com/gkjkovacs/Magyar-kozlony) Vercel project Settings → Environment Variables:
+
+| Key | Value |
+|---|---|
+| `RUNTIME_URL`   | `https://gpjarmu-riport-v3-xxx.vercel.app` |
+| `RUNTIME_TOKEN` | (ugyanaz, mint a v3 `RUNTIME_TOKEN`) |
+
+A SaaS auto-redeployolódik, és a `/scopes`, `/runs`, `/api/runs` hívások a v3 wrapper felé mennek.
+

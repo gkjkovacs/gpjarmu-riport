@@ -1,0 +1,46 @@
+# --- Vercel Python build artifacts ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Local dev data (state DB, outputs, logs) ---
+data/
+output/
+logs/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.log
+*.txt
+!prompts/*.txt
+!docs/*.txt
+!README.md
+
+# --- Secrets / local config ---
+.env
+.env.local
+.env.*.local
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- Test / coverage ---
+.coverage
+htmlcov/
+.tox/
+.nox/

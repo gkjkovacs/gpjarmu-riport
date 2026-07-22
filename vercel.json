@@ -1,0 +1,35 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "api/index.py"
+    }
+  ],
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 300,
+      "memory": 1024
+    }
+  },
+  "regions": ["fra1"],
+  "env": {
+    "PYTHONUNBUFFERED": "1",
+    "SCOPE": "konyveles",
+    "LOOKBACK_DAYS": "30",
+    "RELEVANCE_THRESHOLD": "0.50",
+    "LLM_PROVIDER": "openai",
+    "LLM_BASE_URL": "https://ollama.com/v1",
+    "LLM_MODEL": "minimax-m3:cloud",
+    "SMTP_ENABLED": "false",
+    "EMAIL_FROM": "hr-kozlony@localhost",
+    "EMAIL_TO": "you@example.com",
+    "EMAIL_SUBJECT_PREFIX": "[HR riport]"
+  }
+}
