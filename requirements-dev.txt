@@ -1,0 +1,5 @@
+# Local-only deps for running the FastAPI wrapper with uvicorn and
+# probing it with httpx. NOT installed on Vercel (see
+# requirements-vercel.txt + .vercelignore).
+uvicorn>=0.29,<1.0
+httpx>=0.27,<1.0

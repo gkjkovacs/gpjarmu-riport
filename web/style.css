@@ -1,0 +1,228 @@
+/* ============================================================
+ * Céges Gépjármű Magyar Közlöny Riport — minimal dark-mode CSS
+ * No CDN, no build step.
+ * ============================================================ */
+
+:root {
+  --bg: #0e1116;
+  --bg-card: #161b22;
+  --bg-card-2: #1c232c;
+  --fg: #e6edf3;
+  --fg-muted: #9aa6b2;
+  --border: #30363d;
+  --accent: #58a6ff;
+  --accent-2: #1f6feb;
+  --danger: #f85149;
+  --danger-2: #b62324;
+  --warning: #d29922;
+  --success: #3fb950;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f8fa;
+    --bg-card: #ffffff;
+    --bg-card-2: #f0f3f6;
+    --fg: #1f2328;
+    --fg-muted: #57606a;
+    --border: #d0d7de;
+    --accent: #0969da;
+    --accent-2: #0550ae;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+header {
+  padding: 1.5rem 2rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+main {
+  max-width: 900px;
+  margin: 1.5rem auto;
+  padding: 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+footer {
+  max-width: 900px;
+  margin: 2rem auto 3rem;
+  padding: 0 1.5rem;
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+}
+
+footer a { color: var(--accent); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+.muted { color: var(--fg-muted); font-family: var(--mono); font-size: 0.85rem; }
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  gap: 0.75rem;
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.actions { display: flex; gap: 0.5rem; }
+
+/* ---------- Key/value grid ---------- */
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+.kv dt { color: var(--fg-muted); font-size: 0.9rem; }
+.kv dd { margin: 0; font-family: var(--mono); font-size: 0.9rem; word-break: break-all; }
+
+/* ---------- Forms ---------- */
+form { display: flex; flex-direction: column; gap: 0.75rem; }
+
+label.field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+label.field span { flex: 0 0 auto; color: var(--fg-muted); }
+label.field input {
+  width: 6rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--bg-card-2);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--mono);
+}
+
+label.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+/* ---------- Buttons ---------- */
+button, .button {
+  appearance: none;
+  background: var(--bg-card-2);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
+  font-family: var(--sans);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+button:hover, .button:hover { border-color: var(--accent); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+button.primary:hover { background: var(--accent); border-color: var(--accent); }
+button.danger { background: var(--danger-2); border-color: var(--danger-2); color: #fff; }
+button.danger:hover { background: var(--danger); border-color: var(--danger); }
+button.big { padding: 0.7rem 1.2rem; font-size: 1rem; font-weight: 600; }
+
+a.button { line-height: 1.4; }
+a#btn-download-report { background: var(--bg-card-2); border: 1px solid var(--border); border-radius: 5px; padding: 0.45rem 0.9rem; font-size: 0.9rem; color: var(--fg); }
+a#btn-download-report:hover { border-color: var(--accent); text-decoration: none; }
+
+/* ---------- Progress ---------- */
+.progress {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--fg-muted);
+}
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--fg-muted);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Result report ---------- */
+.report-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+pre {
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+ul.warning-list, ul.error-list {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.25rem;
+}
+ul.warning-list li { color: var(--warning); }
+ul.error-list li { color: var(--danger); }
+
+h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hidden { display: none !important; }

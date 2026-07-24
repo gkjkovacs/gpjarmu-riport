@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Céges Gépjármű Magyar Közlöny Riport</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>📋 Céges Gépjármű Magyar Közlöny Riport</h1>
+    <p id="url-banner" class="muted">…</p>
+  </header>
+
+  <main>
+    <!-- ============ Status card ============ -->
+    <section class="card" id="status-card">
+      <header class="card-header">
+        <h2>Státusz</h2>
+        <button id="btn-refresh-status" type="button">Frissítés</button>
+      </header>
+      <dl id="status-content" class="kv">
+        <dt>Státusz</dt><dd id="status-ok">…</dd>
+        <dt>Vercel?</dt><dd id="status-vercel">…</dd>
+        <dt>Verzió</dt><dd id="status-ver">…</dd>
+      </dl>
+    </section>
+
+    <!-- ============ Config card ============ -->
+    <section class="card" id="config-card">
+      <header class="card-header">
+        <h2>Konfiguráció</h2>
+        <button id="btn-refresh-config" type="button">Frissítés</button>
+      </header>
+      <details>
+        <summary>Részletek megjelenítése (titkok kitakarva)</summary>
+        <pre id="config-content">…</pre>
+      </details>
+    </section>
+
+    <!-- ============ State card ============ -->
+    <section class="card" id="state-card">
+      <header class="card-header">
+        <h2>State DB</h2>
+        <div class="actions">
+          <button id="btn-refresh-state" type="button">Frissítés</button>
+          <button id="btn-init-db" type="button" class="danger">Init/Reset DB</button>
+        </div>
+      </header>
+      <dl id="state-content" class="kv">
+        <dt>DB path</dt><dd id="state-dbpath">…</dd>
+        <dt>Létezik?</dt><dd id="state-exists">…</dd>
+        <dt>Utolsó futás</dt><dd id="state-last-run">…</dd>
+        <dt>Összes riport</dt><dd id="state-total">…</dd>
+      </dl>
+    </section>
+
+    <!-- ============ Run panel ============ -->
+    <section class="card" id="run-card">
+      <header class="card-header">
+        <h2>Pipeline futtatás</h2>
+      </header>
+
+      <form id="run-form">
+        <label class="checkbox">
+          <input type="checkbox" id="opt-seed" />
+          Seed futás (teljes lookback, figyelmen kívül hagyja a last_run-t)
+        </label>
+
+        <label class="field">
+          <span>Lookback (nap)</span>
+          <input type="number" id="opt-lookback" min="1" max="365" value="30" />
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" id="opt-dry-run" checked />
+          Dry run (nincs email, nincs state-írás)
+        </label>
+
+        <button type="submit" id="btn-run" class="primary big">▶ Pipeline futtatása</button>
+      </form>
+
+      <div id="run-progress" class="progress hidden">
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="run-progress-text">Indulás…</span>
+      </div>
+    </section>
+
+    <!-- ============ Result panel ============ -->
+    <section class="card hidden" id="result-card">
+      <header class="card-header">
+        <h2>Eredmény</h2>
+      </header>
+
+      <dl class="kv">
+        <dt>Új bekezdések</dt><dd id="res-new-items">–</dd>
+        <dt>Scannelt számok</dt><dd id="res-issues">–</dd>
+        <dt>Időtartam</dt><dd id="res-duration">–</dd>
+        <dt>Email</dt><dd id="res-email">–</dd>
+        <dt>Fájl</dt><dd id="res-filename">–</dd>
+      </dl>
+
+      <div id="res-warnings" class="hidden">
+        <h3>⚠️ Figyelmeztetések</h3>
+        <ul id="res-warnings-list" class="warning-list"></ul>
+      </div>
+
+      <div id="res-errors" class="hidden">
+        <h3>❌ Hibák</h3>
+        <ul id="res-errors-list" class="error-list"></ul>
+      </div>
+
+      <div class="report-actions">
+        <button id="btn-copy-report" type="button">📋 Másolás</button>
+        <a id="btn-download-report" href="#" download>⬇️ Letöltés .txt</a>
+      </div>
+
+      <h3>Riport tartalom</h3>
+      <pre id="res-report"></pre>
+    </section>
+  </main>
+
+  <footer>
+    <a href="/docs" target="_blank" rel="noopener">FastAPI /docs (Swagger UI)</a>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

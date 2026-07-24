@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+data/
+output/
+*.db
+*.log
+.env
+.env.local
+.env.*.local
+src/gpjarmu_riport.egg-info/
+tests/
